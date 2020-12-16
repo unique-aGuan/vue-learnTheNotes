@@ -20,23 +20,51 @@
     return _typeof(obj);
   }
 
-  function isObject() {
-    if ((typeof data === "undefined" ? "undefined" : _typeof(data)) !== 'object' && data !== null) {
-      return;
+  function _classCallCheck(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
     }
   }
 
-  // 把data中的数据 都使用Object.defineProperty 重新定义 es5
-  function observe(data) {
-    var isObj = isObject();
-
-    if (!isObj) {
-      return;
+  function _defineProperties(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
     }
   }
 
-  function initState(vm) {
-    var opts = vm.$options; // vue 的数据来源 属性 方法 数据 计算属性 watch
+  function _createClass(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties(Constructor, staticProps);
+    return Constructor;
+  }
+
+  var oldArrayProtoMethods = Array.prototype;
+  console.log(oldArrayProtoMethods);
+  var arrayMethods = Object.create(oldArrayProtoMethods);
+  console.log(arrayMethods);
+  var methods = ['push', 'pop', 'unshift', 'shift', 'splice', 'reverse', 'sort'];
+  methods.forEach(function (method) {
+    arrayMethods[method] = function () {
+      oldArrayProtoMethods[method].apply(this, arguments);
+    };
+  });
+
+  var Vue = function Vue(options) {
+    this._init(options);
+  };
+
+  Vue.prototype._init = function (options) {
+    var vm = this;
+    vm.$options = options;
+    initState(vm);
+  };
+
+  var initState = function initState(vm) {
+    var opts = vm.$options;
 
     if (opts.props) ;
 
@@ -45,43 +73,61 @@
     if (opts.data) {
       initData(vm);
     }
-
-    if (opts.computed) ;
-
-    if (opts.watch) ;
-  }
+  };
 
   function initData(vm) {
-    // 数据初始化工作
     var data = vm.$options.data;
-    data = vm._data = typeof data === 'function' ? data.call(vm) : data; // 劫持对象 用户改变了数据 我希望可以得到通知 -> 刷新页面
-    // MVVM模式 数据变化可以驱动视图变化
-    // Object.defineProperty () 给属性增加get方法和set方法
+    vm._data = data = typeof data === 'function' ? data.call(vm) : data; // 数据的劫持方案
+    // 数组 单独处理的
 
-    observe(); // 响应式原理
+    observe(data);
   }
 
-  function initMixin(Vue) {
-    // 初始化流程
-    Vue.prototype._init = function (options) {
-      // 数据劫持
-      var vm = this; // 在vue中使用 this.$options 指代的就是用户传递的属性
+  var Observe = /*#__PURE__*/function () {
+    function Observe(value) {
+      _classCallCheck(this, Observe);
 
-      vm.$options = options; // 初始化状态
+      if (Array.isArray(value)) {
+        // 我希望调用 push shift unshift splice sort reverse pop
+        value.__proto__ = arrayMethods;
+      } else {
+        this.walk(value);
+      }
+    }
 
-      initState(vm); // 分割代码
-    };
+    _createClass(Observe, [{
+      key: "walk",
+      value: function walk(data) {
+        var keys = Object.keys(data);
+        keys.forEach(function (key) {
+          defineReactive(data, key, data[key]);
+        });
+      }
+    }]);
+
+    return Observe;
+  }();
+
+  function defineReactive(data, key, value) {
+    observe(value);
+    Object.defineProperty(data, key, {
+      get: function get() {
+        console.log('用户获取值了');
+        return value;
+      },
+      set: function set(newValue) {
+        console.log('用户设置值了');
+        if (newValue === value) return;
+        observe(newValue);
+        value = newValue;
+      }
+    });
   }
 
-  // vue的核心代码 只是vue的一个声明
-
-  function Vue(options) {
-    // 进行vue的初始化操作
-    this._init(options);
-  } // 通过引入文件的方式给vue原型上添加方法
-
-
-  initMixin(Vue);
+  function observe(data) {
+    if (_typeof(data) !== 'object' || data == null) return;
+    return new Observe(data);
+  }
 
   return Vue;
 
