@@ -72,6 +72,17 @@
     };
   });
 
+  function proxy(vm, data, key) {
+    Object.defineProperty(vm, key, {
+      get: function get() {
+        return vm[data][key];
+      },
+      set: function set(newValue) {
+        vm[data][key] = newValue;
+      }
+    });
+  }
+
   var Vue = function Vue(options) {
     this._init(options);
   };
@@ -97,6 +108,11 @@
   function initData(vm) {
     var data = vm.$options.data;
     vm._data = data = typeof data === 'function' ? data.call(vm) : data;
+
+    for (var key in data) {
+      proxy(vm, '_data', key);
+    }
+
     observe(data);
   }
 
