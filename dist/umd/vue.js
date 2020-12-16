@@ -325,8 +325,17 @@
 
     var code = generate(ast); // 4、将字符串变成函数
 
-    var render = new Function("with(this){".concat(code, "};"));
+    var render = new Function("with(this){return ".concat(code, "};"));
     return render;
+  }
+
+  function lifecycleMixin(Vue) {
+    Vue.prototype._update = function (vnode) {};
+  }
+  function mountComponent(vm, el) {
+    // 调用render方法去渲染 el属性
+    // 先调用render方法创建虚拟节点，再将虚拟节点渲染到页面上
+    vm._update(vm._render());
   }
 
   var oldArrayProtoMethods = Array.prototype;
@@ -379,41 +388,17 @@
     });
   }
 
-  var Vue = function Vue(options) {
-    this._init(options);
-  };
+  function initMixin(Vue) {
+    Vue.prototype._init = function (options) {
+      var vm = this;
+      vm.$options = options;
+      initState(vm);
 
-  Vue.prototype._init = function (options) {
-    var vm = this;
-    vm.$options = options;
-    initState(vm);
-
-    if (vm.$options.el) {
-      vm.$mount(vm.$options.el);
-    }
-  };
-
-  Vue.prototype.$mount = function (el) {
-    // 挂载操作
-    var vm = this;
-    var options = vm.$options;
-    el = document.querySelector(el);
-
-    if (!options.render) {
-      // 如果没render 将template转换成render方法
-      var template = options.template;
-
-      if (!template && el) {
-        template = el.outerHTML; // DOM知识部分
-      } // 编译原理 将模板编译成render函数
-
-
-      var render = compileToFunction(template);
-      options.render = render;
-    }
-
-    console.log(options.render);
-  };
+      if (vm.$options.el) {
+        vm.$mount(vm.$options.el);
+      }
+    };
+  }
 
   var initState = function initState(vm) {
     var opts = vm.$options;
@@ -479,7 +464,7 @@
     observe(value);
     Object.defineProperty(data, key, {
       get: function get() {
-        console.log('用户获取值了');
+        console.log('用户获取值了', value);
         return value;
       },
       set: function set(newValue) {
@@ -500,6 +485,90 @@
 
     return new Observe(data);
   }
+
+  function renderMixin(Vue) {
+    // 用对象来描述dom的结构
+    // _c('div',{id:"app",style:{"color":" red"}},_v("你好："),_c('span',undefined,_v("阳光的"+_s(name)+"大人")),_c('div',{id:"age"},_v(_s(age))))
+    Vue.prototype._c = function () {
+      // 创建元素
+      return createElement.apply(void 0, arguments);
+    };
+
+    Vue.prototype._v = function (val) {
+      // stringify
+      return val == null ? '' : _typeof(val) == 'object' ? JSON.stringify(val) : val;
+    };
+
+    Vue.prototype._s = function (text) {
+      // 创建文本元素
+      console.log(text);
+      return createTextVnode(text);
+    };
+
+    Vue.prototype._render = function () {
+      var vm = this;
+      var render = vm.$options.render;
+      var vnode = render.call(vm);
+      console.log(vnode);
+      return vnode;
+    };
+  }
+
+  function createElement(tag) {
+    var data = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
+    for (var _len = arguments.length, children = new Array(_len > 2 ? _len - 2 : 0), _key = 2; _key < _len; _key++) {
+      children[_key - 2] = arguments[_key];
+    }
+
+    // console.log(arguments)
+    return vnode(tag, data, data.key, children);
+  }
+
+  function createTextVnode(text) {
+    return vnode(undefined, undefined, undefined, undefined, text);
+  }
+
+  function vnode(tag, data, key, children, text) {
+    return {
+      tag: tag,
+      data: data,
+      key: key,
+      children: children,
+      text: text
+    };
+  }
+
+  var Vue = function Vue(options) {
+    this._init(options);
+  };
+
+  initMixin(Vue);
+  lifecycleMixin(Vue);
+  renderMixin(Vue);
+
+  Vue.prototype.$mount = function (el) {
+    // 挂载操作
+    var vm = this;
+    var options = vm.$options;
+    el = document.querySelector(el);
+
+    if (!options.render) {
+      // 如果没render 将template转换成render方法
+      var template = options.template;
+
+      if (!template && el) {
+        template = el.outerHTML; // DOM知识部分
+      } // 编译原理 将模板编译成render函数
+
+
+      var render = compileToFunction(template);
+      options.render = render;
+    } // 挂载当前组件
+
+
+    mountComponent(vm);
+  };
 
   return Vue;
 

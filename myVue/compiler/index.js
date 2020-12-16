@@ -13,6 +13,6 @@ export function compileToFunction (template) {
   // 3、通过这颗树 重新生成代码
   let code = generate(ast);
   // 4、将字符串变成函数
-  let render = new Function(`with(this){${code}};`);
+  let render = new Function(`with(this){return ${code}};`);
   return render;
 }
