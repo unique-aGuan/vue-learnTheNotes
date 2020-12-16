@@ -8,6 +8,12 @@
 </head>
 
 <body>
+  <div id="app">
+    {{name}}
+    <div id="age">
+      {{age}}
+    </div>
+  </div>
   <script src='/dist/umd/vue.js'></script>
   <script>
     let vm = new Vue({
@@ -19,11 +25,14 @@
           arr: [{ a: 1 }]
         }
       },
+      // render(h) {
+
+      // },
+      // template: `<div id="a">hello</div>`,
       computed() { },
       watch() { }
     })
-    vm._data.arr.push(1)
-    vm._data.arr[0].a = 0
+    // vue渲染的操作 1、默认会先找render方法 2、没人没有传出render方法会查找template 3、找当前el指定的元素中的内容进行渲染
   </script>
 </body>
 

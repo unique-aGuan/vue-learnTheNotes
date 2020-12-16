@@ -42,6 +42,156 @@
     return Constructor;
   }
 
+  var ncname = "[a-zA-Z_][\\-\\.0-9_a-zA-Z]*"; // aa-aa 
+
+  var qnameCapture = "((?:".concat(ncname, "\\:)?").concat(ncname, ")"); //aa:aa
+
+  var startTagOpen = new RegExp("^<".concat(qnameCapture)); // 可以匹配到标签名  [1]
+
+  var endTag = new RegExp("^<\\/".concat(qnameCapture, "[^>]*>")); //[0] 标签的结束名字
+  //    style="xxx"   style='xxx'  style=xxx
+
+  var attribute = /^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/;
+  var startTagClose = /^\s*(\/?)>/;
+
+  function parseHTML(html) {
+    function createASTElement(tagName, attrs) {
+      return {
+        tag: tagName,
+        // 标签名
+        type: 1,
+        // 标签类型
+        children: [],
+        // 孩子列表
+        attrs: attrs,
+        // 属性集合
+        parent: null // 父元素
+
+      };
+    }
+
+    var root;
+    var currentParent;
+    var stack = [];
+
+    function start(tagName, attrs) {
+      console.log(tagName, attrs, '---------------开始---------------');
+      var element = createASTElement(tagName, attrs);
+
+      if (!root) {
+        root = element;
+      }
+
+      currentParent = element; // 当前解析的标签保存起来
+
+      stack.push(element);
+    }
+
+    function end() {
+      var element = stack.pop(); // 取出栈中的最后一个
+
+      currentParent = stack[stack.length - 1];
+
+      if (currentParent) {
+        // 在闭合标签是可以知道这个标签的父亲是谁
+        element.parent = currentParent;
+        currentParent.children.push(element);
+      }
+    }
+
+    function chars(text) {
+      text = text.replace(/\s/g, '');
+
+      if (text) {
+        currentParent.children.push({
+          type: 3,
+          text: text
+        });
+      }
+    }
+
+    while (html) {
+      // 只要html不为空，就一直解析
+      var textEnd = html.indexOf('<');
+
+      if (textEnd == 0) {
+        // 肯定是标签
+        var startTagMatch = parseStartTag();
+
+        if (startTagMatch) {
+          start(startTagMatch.tagName, startTagMatch.attrs);
+          continue;
+        }
+
+        var endTagMatch = html.match(endTag);
+
+        if (endTagMatch) {
+          advance(endTagMatch[0].length);
+          end(endTagMatch[1]); // 将结束标签传入
+
+          continue;
+        }
+      }
+
+      var text = void 0;
+
+      if (textEnd > 0) {
+        // 是文本
+        text = html.substring(0, textEnd);
+      }
+
+      if (text) {
+        // 处理文本
+        advance(text.length);
+        chars(text);
+      }
+    }
+
+    function advance(n) {
+      html = html.substring(n);
+    }
+
+    function parseStartTag() {
+      var start = html.match(startTagOpen);
+
+      if (start) {
+        var match = {
+          tagName: start[1],
+          attrs: []
+        };
+        advance(start[0].length); // 删除开始标签
+        // 如果直接是闭合标签了 说明没有属性
+
+        var _end;
+
+        var attr;
+
+        while (!(_end = html.match(startTagClose)) && (attr = html.match(attribute))) {
+          match.attrs.push({
+            name: attr[1],
+            value: attr[3] || attr[4] || attr[5]
+          });
+          advance(attr[0].length); //去掉当前属性
+        }
+
+        if (_end) {
+          advance(_end[0].length);
+          return match;
+        }
+      }
+    }
+
+    return root;
+  }
+
+  function compileToFunction(template) {
+    // html模板 -> render函数
+    // 1、需要将html代码转化成“ast”语法树 可以用ast书来描述语言本身
+    // 前端必须掌握的数据结构 （树）
+    var ast = parseHTML(template);
+    console.log(ast); // 2、通过这颗树 重新生成代码
+  }
+
   var oldArrayProtoMethods = Array.prototype;
   var arrayMethods = Object.create(oldArrayProtoMethods);
   var methods = ['push', 'pop', 'unshift', 'shift', 'splice', 'reverse', 'sort'];
@@ -100,6 +250,32 @@
     var vm = this;
     vm.$options = options;
     initState(vm);
+
+    if (vm.$options.el) {
+      vm.$mount(vm.$options.el);
+    }
+  };
+
+  Vue.prototype.$mount = function (el) {
+    // 挂载操作
+    var vm = this;
+    var options = vm.$options;
+    el = document.querySelector(el);
+
+    if (!options.render) {
+      // 如果没render 将template转换成render方法
+      var template = options.template;
+
+      if (!template && el) {
+        template = el.outerHTML; // DOM知识部分
+      } // 编译原理 将模板编译成render函数
+
+
+      var render = compileToFunction(template);
+      options.render = render;
+    }
+
+    console.log(options.render);
   };
 
   var initState = function initState(vm) {
