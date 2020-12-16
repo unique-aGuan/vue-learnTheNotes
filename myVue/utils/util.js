@@ -9,6 +9,15 @@ function proxy (vm, data, key) {
   })
 }
 
+function defineProperty (target, key, value) {
+  Object.defineProperty(target, key, {
+    enumerable: false, // 不能被枚举
+    configurable: false,
+    value: value
+  })
+}
+
 export {
-  proxy
+  proxy,
+  defineProperty
 }

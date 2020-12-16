@@ -1,5 +1,5 @@
 import { arrayMethods } from "./data/array";
-import { proxy } from "./utils/util";
+import { defineProperty, proxy } from "./utils/util";
 
 let Vue = function (options) {
   this._init(options)
@@ -44,11 +44,7 @@ function initData (vm) {
 class Observe {
   constructor(value) {
     // 判断一个对象是否被检测过
-    Object.defineProperty(value, '__ob__', {
-      enumerable: false, // 不能被枚举
-      configurable: false,
-      value: this
-    })
+    defineProperty(value, '__ob__', this)
     if (Array.isArray(value)) {
       // 我希望调用 push shift unshift splice sort reverse pop
       value.__proto__ = arrayMethods;

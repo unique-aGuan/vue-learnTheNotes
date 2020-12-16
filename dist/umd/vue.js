@@ -83,6 +83,15 @@
     });
   }
 
+  function defineProperty(target, key, value) {
+    Object.defineProperty(target, key, {
+      enumerable: false,
+      // 不能被枚举
+      configurable: false,
+      value: value
+    });
+  }
+
   var Vue = function Vue(options) {
     this._init(options);
   };
@@ -121,12 +130,7 @@
       _classCallCheck(this, Observe);
 
       // 判断一个对象是否被检测过
-      Object.defineProperty(value, '__ob__', {
-        enumerable: false,
-        // 不能被枚举
-        configurable: false,
-        value: this
-      });
+      defineProperty(value, '__ob__', this);
 
       if (Array.isArray(value)) {
         // 我希望调用 push shift unshift splice sort reverse pop
