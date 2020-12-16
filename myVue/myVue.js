@@ -16,6 +16,7 @@ Vue.prototype.$mount = function (el) {
   const vm = this;
   const options = vm.$options;
   el = document.querySelector(el);
+  vm.$el = el;
   if (!options.render) {
     // 如果没render 将template转换成render方法
 

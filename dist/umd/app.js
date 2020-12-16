@@ -329,44 +329,9 @@
     return render;
   }
 
-  function patch(oldVnode, vnode) {
-    // _c('div',{id:"app",style:{"color":" red"}},_v("你好："),_c('span',undefined,_v("阳光的"+_s(name)+"大人")),_c('div',{id:"age"},_v(_s(age))))
-    var el = createEle(vnode);
-    var parentElm = oldVnode.parentNode;
-    parentElm.insertBefore(el, oldVnode.nextsibling); // 当前的真实元素插入到app的后面
-
-    parentElm.removeChild(oldVnode);
-  }
-
-  function createEle(vnode) {
-    var tag = vnode.tag,
-        children = vnode.children,
-        key = vnode.key,
-        data = vnode.data,
-        text = vnode.text;
-
-    if (typeof tag == 'string') {
-      vnode.el = document.createElement(tag);
-      children.forEach(function (child) {
-        vnode.el.appendChild(createEle(child));
-      });
-    } else {
-      vnode.el = document.createTextNode(text);
-    }
-
-    return vnode.el;
-  }
-
   function lifecycleMixin(Vue) {
     Vue.prototype._update = function (vnode) {
-      var vm = this;
-      patch(vm.$el, vnode);
     };
-  }
-  function mountComponent(vm, el) {
-    // 调用render方法去渲染 el属性
-    // 先调用render方法创建虚拟节点，再将虚拟节点渲染到页面上
-    vm._update(vm._render());
   }
 
   var oldArrayProtoMethods = Array.prototype;
@@ -525,14 +490,14 @@
       return createElement.apply(void 0, arguments);
     };
 
-    Vue.prototype._v = function (text) {
+    Vue.prototype._v = function (val) {
       // stringify
-      return createTextVnode(text);
+      return val == null ? '' : _typeof(val) == 'object' ? JSON.stringify(val) : val;
     };
 
-    Vue.prototype._s = function (val) {
+    Vue.prototype._s = function (text) {
       // 创建文本元素
-      return val == null ? '' : _typeof(val) == 'object' ? JSON.stringify(val) : val;
+      return createTextVnode(text);
     };
 
     Vue.prototype._render = function () {
@@ -594,12 +559,11 @@
       var render = compileToFunction(template);
       options.render = render;
     } // 挂载当前组件
+    // mountComponent(vm, el);
 
-
-    mountComponent(vm);
   };
 
   return Vue;
 
 })));
-//# sourceMappingURL=vue.js.map
+//# sourceMappingURL=app.js.map
