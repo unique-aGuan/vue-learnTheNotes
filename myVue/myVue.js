@@ -34,14 +34,17 @@ function initMethods (vm) {
 function initData (vm) {
   let data = vm.$options.data;
   vm._data = data = typeof data === 'function' ? data.call(vm) : data;
-
-  // 数据的劫持方案
-  // 数组 单独处理的
   observe(data);
 }
 
 class Observe {
   constructor(value) {
+    // 判断一个对象是否被检测过
+    Object.defineProperty(value, '__ob__', {
+      enumerable: false, // 不能被枚举
+      configurable: false,
+      value: this
+    })
     if (Array.isArray(value)) {
       // 我希望调用 push shift unshift splice sort reverse pop
       value.__proto__ = arrayMethods;
@@ -82,6 +85,9 @@ function defineReactive (data, key, value) {
 
 function observe (data) {
   if (typeof data !== 'object' || data == null) return;
+  if (data.__ob__) {
+    return;
+  }
   return new Observe(data)
 }
 

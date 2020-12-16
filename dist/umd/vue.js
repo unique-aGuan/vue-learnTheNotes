@@ -47,8 +47,27 @@
   var methods = ['push', 'pop', 'unshift', 'shift', 'splice', 'reverse', 'sort'];
   methods.forEach(function (method) {
     arrayMethods[method] = function () {
-      console.log('数组方法被调用了');
+      for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
+        args[_key] = arguments[_key];
+      }
+
       var result = oldArrayProtoMethods[method].apply(this, arguments);
+      var inserted;
+      var ob = this.__ob__;
+
+      switch (methods) {
+        case 'push':
+          break;
+
+        case 'unshift':
+          inserted = args;
+          break;
+
+        case 'splice':
+          inserted = args.slice(2);
+      }
+
+      if (inserted) ob.observeArray(inserted);
       return result;
     };
   });
@@ -77,15 +96,21 @@
 
   function initData(vm) {
     var data = vm.$options.data;
-    vm._data = data = typeof data === 'function' ? data.call(vm) : data; // 数据的劫持方案
-    // 数组 单独处理的
-
+    vm._data = data = typeof data === 'function' ? data.call(vm) : data;
     observe(data);
   }
 
   var Observe = /*#__PURE__*/function () {
     function Observe(value) {
       _classCallCheck(this, Observe);
+
+      // 判断一个对象是否被检测过
+      Object.defineProperty(value, '__ob__', {
+        enumerable: false,
+        // 不能被枚举
+        configurable: false,
+        value: this
+      });
 
       if (Array.isArray(value)) {
         // 我希望调用 push shift unshift splice sort reverse pop
@@ -135,6 +160,11 @@
 
   function observe(data) {
     if (_typeof(data) !== 'object' || data == null) return;
+
+    if (data.__ob__) {
+      return;
+    }
+
     return new Observe(data);
   }
 
