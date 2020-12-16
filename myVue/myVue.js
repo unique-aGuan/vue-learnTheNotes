@@ -45,6 +45,8 @@ class Observe {
     if (Array.isArray(value)) {
       // 我希望调用 push shift unshift splice sort reverse pop
       value.__proto__ = arrayMethods;
+      // 观测
+      this.observeArray(value);
     } else {
       this.walk(value);
     }
@@ -53,6 +55,11 @@ class Observe {
     let keys = Object.keys(data);
     keys.forEach(key => {
       defineReactive(data, key, data[key]);
+    })
+  }
+  observeArray (value) {
+    value.forEach(item => {
+      observe(item);
     })
   }
 }

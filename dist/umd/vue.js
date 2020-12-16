@@ -43,13 +43,13 @@
   }
 
   var oldArrayProtoMethods = Array.prototype;
-  console.log(oldArrayProtoMethods);
   var arrayMethods = Object.create(oldArrayProtoMethods);
-  console.log(arrayMethods);
   var methods = ['push', 'pop', 'unshift', 'shift', 'splice', 'reverse', 'sort'];
   methods.forEach(function (method) {
     arrayMethods[method] = function () {
-      oldArrayProtoMethods[method].apply(this, arguments);
+      console.log('数组方法被调用了');
+      var result = oldArrayProtoMethods[method].apply(this, arguments);
+      return result;
     };
   });
 
@@ -89,7 +89,9 @@
 
       if (Array.isArray(value)) {
         // 我希望调用 push shift unshift splice sort reverse pop
-        value.__proto__ = arrayMethods;
+        value.__proto__ = arrayMethods; // 观测
+
+        this.observeArray(value);
       } else {
         this.walk(value);
       }
@@ -101,6 +103,13 @@
         var keys = Object.keys(data);
         keys.forEach(function (key) {
           defineReactive(data, key, data[key]);
+        });
+      }
+    }, {
+      key: "observeArray",
+      value: function observeArray(value) {
+        value.forEach(function (item) {
+          observe(item);
         });
       }
     }]);

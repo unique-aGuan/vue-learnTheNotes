@@ -1,7 +1,5 @@
 let oldArrayProtoMethods = Array.prototype;
-console.log(oldArrayProtoMethods)
 export let arrayMethods = Object.create(oldArrayProtoMethods);
-console.log(arrayMethods);
 
 let methods = [
   'push',
@@ -15,6 +13,8 @@ let methods = [
 
 methods.forEach(method => {
   arrayMethods[method] = function () {
-    oldArrayProtoMethods[method].apply(this, arguments)
+    console.log('数组方法被调用了');
+    const result = oldArrayProtoMethods[method].apply(this, arguments);
+    return result;
   }
 })
