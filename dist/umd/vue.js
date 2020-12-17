@@ -4,6 +4,70 @@
   (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.Vue = factory());
 }(this, (function () { 'use strict';
 
+  function initGlobalApi(Vue) {
+    Vue.mixin = function (mixin) {
+      console.log(mixin);
+    };
+  }
+
+  function patch(oldVnode, vnode) {
+    // _c('div',{id:"app",style:{"color":" red"}},_v("你好："),_c('span',undefined,_v("阳光的"+_s(name)+"大人")),_c('div',{id:"age"},_v(_s(age))))
+    var el = createEle(vnode);
+    var parentElm = oldVnode.parentNode;
+    parentElm.insertBefore(el, oldVnode.nextsibling); // 当前的真实元素插入到app的后面
+
+    parentElm.removeChild(oldVnode);
+  }
+
+  function createEle(vnode) {
+    var tag = vnode.tag,
+        children = vnode.children,
+        key = vnode.key,
+        data = vnode.data,
+        text = vnode.text;
+
+    if (typeof tag == 'string') {
+      vnode.el = document.createElement(tag);
+      updateProperties(vnode);
+      children.forEach(function (child) {
+        vnode.el.appendChild(createEle(child));
+      });
+    } else {
+      vnode.el = document.createTextNode(text);
+    }
+
+    return vnode.el;
+  }
+
+  function updateProperties(vnode) {
+    var el = vnode.el;
+    var newProps = vnode.data || {};
+
+    for (var key in newProps) {
+      if (key == 'style') {
+        for (var styleName in newProps.style) {
+          el.style[styleName] = newProps.style[styleName];
+        }
+      } else if (key == 'class') {
+        el.className = el["class"];
+      } else {
+        el.setAttribute(key, newProps[key]);
+      }
+    }
+  }
+
+  function lifecycleMixin(Vue) {
+    Vue.prototype._update = function (vnode) {
+      var vm = this;
+      patch(vm.$el, vnode);
+    };
+  }
+  function mountComponent(vm, el) {
+    // 调用render方法去渲染 el属性
+    // 先调用render方法创建虚拟节点，再将虚拟节点渲染到页面上
+    vm._update(vm._render());
+  }
+
   function _typeof(obj) {
     "@babel/helpers - typeof";
 
@@ -96,6 +160,142 @@
 
   function _nonIterableRest() {
     throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
+  }
+
+  var oldArrayProtoMethods = Array.prototype;
+  var arrayMethods = Object.create(oldArrayProtoMethods);
+  var methods = ['push', 'pop', 'unshift', 'shift', 'splice', 'reverse', 'sort'];
+  methods.forEach(function (method) {
+    arrayMethods[method] = function () {
+      for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
+        args[_key] = arguments[_key];
+      }
+
+      var result = oldArrayProtoMethods[method].apply(this, arguments);
+      var inserted;
+      var ob = this.__ob__;
+
+      switch (methods) {
+        case 'push':
+          break;
+
+        case 'unshift':
+          inserted = args;
+          break;
+
+        case 'splice':
+          inserted = args.slice(2);
+      }
+
+      if (inserted) ob.observeArray(inserted);
+      return result;
+    };
+  });
+
+  function proxy(vm, data, key) {
+    Object.defineProperty(vm, key, {
+      get: function get() {
+        return vm[data][key];
+      },
+      set: function set(newValue) {
+        vm[data][key] = newValue;
+      }
+    });
+  }
+
+  function defineProperty(target, key, value) {
+    Object.defineProperty(target, key, {
+      enumerable: false,
+      // 不能被枚举
+      configurable: false,
+      value: value
+    });
+  }
+
+  function initState(vm) {
+    var opts = vm.$options;
+
+    if (opts.props) ;
+
+    if (opts.methods) ;
+
+    if (opts.data) {
+      initData(vm);
+    }
+  }
+
+  function initData(vm) {
+    var data = vm.$options.data;
+    vm._data = data = typeof data === 'function' ? data.call(vm) : data;
+
+    for (var key in data) {
+      proxy(vm, '_data', key);
+    }
+
+    observe(data);
+  }
+
+  var Observe = /*#__PURE__*/function () {
+    function Observe(value) {
+      _classCallCheck(this, Observe);
+
+      // 判断一个对象是否被检测过
+      defineProperty(value, '__ob__', this);
+
+      if (Array.isArray(value)) {
+        // 我希望调用 push shift unshift splice sort reverse pop
+        value.__proto__ = arrayMethods; // 观测
+
+        this.observeArray(value);
+      } else {
+        this.walk(value);
+      }
+    }
+
+    _createClass(Observe, [{
+      key: "walk",
+      value: function walk(data) {
+        var keys = Object.keys(data);
+        keys.forEach(function (key) {
+          defineReactive(data, key, data[key]);
+        });
+      }
+    }, {
+      key: "observeArray",
+      value: function observeArray(value) {
+        value.forEach(function (item) {
+          observe(item);
+        });
+      }
+    }]);
+
+    return Observe;
+  }();
+
+  function defineReactive(data, key, value) {
+    observe(value);
+    Object.defineProperty(data, key, {
+      get: function get() {
+        console.log('用户获取值了', value);
+        return value;
+      },
+      set: function set(newValue) {
+        console.log('用户设置值了');
+        if (newValue === value) return;
+        observe(newValue);
+        value = newValue;
+      }
+    });
+  }
+
+  function observe(data) {
+    if (_typeof(data) !== 'object' || data == null) return;
+
+    if (data.__ob__) {
+      return;
+    }
+
+    return new Observe(data);
   }
 
   var defaultTagRE = /\{\{((?:.|\r?\n)+?)\}\}/g;
@@ -329,96 +529,6 @@
     return render;
   }
 
-  function patch(oldVnode, vnode) {
-    // _c('div',{id:"app",style:{"color":" red"}},_v("你好："),_c('span',undefined,_v("阳光的"+_s(name)+"大人")),_c('div',{id:"age"},_v(_s(age))))
-    var el = createEle(vnode);
-    var parentElm = oldVnode.parentNode;
-    parentElm.insertBefore(el, oldVnode.nextsibling); // 当前的真实元素插入到app的后面
-
-    parentElm.removeChild(oldVnode);
-  }
-
-  function createEle(vnode) {
-    var tag = vnode.tag,
-        children = vnode.children,
-        key = vnode.key,
-        data = vnode.data,
-        text = vnode.text;
-
-    if (typeof tag == 'string') {
-      vnode.el = document.createElement(tag);
-      children.forEach(function (child) {
-        vnode.el.appendChild(createEle(child));
-      });
-    } else {
-      vnode.el = document.createTextNode(text);
-    }
-
-    return vnode.el;
-  }
-
-  function lifecycleMixin(Vue) {
-    Vue.prototype._update = function (vnode) {
-      var vm = this;
-      patch(vm.$el, vnode);
-    };
-  }
-  function mountComponent(vm, el) {
-    // 调用render方法去渲染 el属性
-    // 先调用render方法创建虚拟节点，再将虚拟节点渲染到页面上
-    vm._update(vm._render());
-  }
-
-  var oldArrayProtoMethods = Array.prototype;
-  var arrayMethods = Object.create(oldArrayProtoMethods);
-  var methods = ['push', 'pop', 'unshift', 'shift', 'splice', 'reverse', 'sort'];
-  methods.forEach(function (method) {
-    arrayMethods[method] = function () {
-      for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
-        args[_key] = arguments[_key];
-      }
-
-      var result = oldArrayProtoMethods[method].apply(this, arguments);
-      var inserted;
-      var ob = this.__ob__;
-
-      switch (methods) {
-        case 'push':
-          break;
-
-        case 'unshift':
-          inserted = args;
-          break;
-
-        case 'splice':
-          inserted = args.slice(2);
-      }
-
-      if (inserted) ob.observeArray(inserted);
-      return result;
-    };
-  });
-
-  function proxy(vm, data, key) {
-    Object.defineProperty(vm, key, {
-      get: function get() {
-        return vm[data][key];
-      },
-      set: function set(newValue) {
-        vm[data][key] = newValue;
-      }
-    });
-  }
-
-  function defineProperty(target, key, value) {
-    Object.defineProperty(target, key, {
-      enumerable: false,
-      // 不能被枚举
-      configurable: false,
-      value: value
-    });
-  }
-
   function initMixin(Vue) {
     Vue.prototype._init = function (options) {
       var vm = this;
@@ -429,92 +539,30 @@
         vm.$mount(vm.$options.el);
       }
     };
-  }
 
-  var initState = function initState(vm) {
-    var opts = vm.$options;
+    Vue.prototype.$mount = function (el) {
+      // 挂载操作
+      var vm = this;
+      var options = vm.$options;
+      el = document.querySelector(el);
+      vm.$el = el;
 
-    if (opts.props) ;
+      if (!options.render) {
+        // 如果没render 将template转换成render方法
+        var template = options.template;
 
-    if (opts.methods) ;
+        if (!template && el) {
+          template = el.outerHTML; // DOM知识部分
+        } // 编译原理 将模板编译成render函数
 
-    if (opts.data) {
-      initData(vm);
-    }
-  };
 
-  function initData(vm) {
-    var data = vm.$options.data;
-    vm._data = data = typeof data === 'function' ? data.call(vm) : data;
+        var render = compileToFunction(template);
+        options.render = render;
+      } // 挂载当前组件
 
-    for (var key in data) {
-      proxy(vm, '_data', key);
-    }
 
-    observe(data);
-  }
-
-  var Observe = /*#__PURE__*/function () {
-    function Observe(value) {
-      _classCallCheck(this, Observe);
-
-      // 判断一个对象是否被检测过
-      defineProperty(value, '__ob__', this);
-
-      if (Array.isArray(value)) {
-        // 我希望调用 push shift unshift splice sort reverse pop
-        value.__proto__ = arrayMethods; // 观测
-
-        this.observeArray(value);
-      } else {
-        this.walk(value);
-      }
-    }
-
-    _createClass(Observe, [{
-      key: "walk",
-      value: function walk(data) {
-        var keys = Object.keys(data);
-        keys.forEach(function (key) {
-          defineReactive(data, key, data[key]);
-        });
-      }
-    }, {
-      key: "observeArray",
-      value: function observeArray(value) {
-        value.forEach(function (item) {
-          observe(item);
-        });
-      }
-    }]);
-
-    return Observe;
-  }();
-
-  function defineReactive(data, key, value) {
-    observe(value);
-    Object.defineProperty(data, key, {
-      get: function get() {
-        console.log('用户获取值了', value);
-        return value;
-      },
-      set: function set(newValue) {
-        console.log('用户设置值了');
-        if (newValue === value) return;
-        observe(newValue);
-        value = newValue;
-      }
-    });
-  }
-
-  function observe(data) {
-    if (_typeof(data) !== 'object' || data == null) return;
-
-    if (data.__ob__) {
-      return;
-    }
-
-    return new Observe(data);
+      mountComponent(vm);
+    };
   }
 
   function renderMixin(Vue) {
@@ -569,35 +617,14 @@
 
   var Vue = function Vue(options) {
     this._init(options);
-  };
+  }; // 原型方法
+
 
   initMixin(Vue);
   lifecycleMixin(Vue);
-  renderMixin(Vue);
+  renderMixin(Vue); // 静态方法 Vue.component Vue.directive Vue.extend Vue.mixin
 
-  Vue.prototype.$mount = function (el) {
-    // 挂载操作
-    var vm = this;
-    var options = vm.$options;
-    el = document.querySelector(el);
-    vm.$el = el;
-
-    if (!options.render) {
-      // 如果没render 将template转换成render方法
-      var template = options.template;
-
-      if (!template && el) {
-        template = el.outerHTML; // DOM知识部分
-      } // 编译原理 将模板编译成render函数
-
-
-      var render = compileToFunction(template);
-      options.render = render;
-    } // 挂载当前组件
-
-
-    mountComponent(vm);
-  };
+  initGlobalApi(Vue);
 
   return Vue;
 

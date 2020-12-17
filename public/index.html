@@ -17,8 +17,14 @@
   </div>
   <script src='/dist/umd/vue.js'></script>
   <script>
+    Vue.mixin({
+      created: function a() {
+        console.log('created...')
+      }
+    })
     let vm = new Vue({
       el: '#app',
+      // mixin:[],
       data() {
         return {
           name: 'aguan',
@@ -28,6 +34,9 @@
       },
       // render(h) { },
       // template: `<div id="a">hello</div>`,
+      created() {
+        console.log('my created')
+      },
       computed() { },
       watch() { }
     })

@@ -10,6 +10,7 @@ function createEle (vnode) {
   let { tag, children, key, data, text } = vnode;
   if (typeof tag == 'string') {
     vnode.el = document.createElement(tag);
+    updateProperties(vnode);
     children.forEach(child => {
       vnode.el.appendChild(createEle(child));
     });
@@ -17,4 +18,20 @@ function createEle (vnode) {
     vnode.el = document.createTextNode(text)
   }
   return vnode.el;
+}
+
+function updateProperties (vnode) {
+  let el = vnode.el;
+  let newProps = vnode.data || {};
+  for (let key in newProps) {
+    if (key == 'style') {
+      for (let styleName in newProps.style) {
+        el.style[styleName] = newProps.style[styleName]
+      }
+    } else if (key == 'class') {
+      el.className = el.class;
+    } else {
+      el.setAttribute(key, newProps[key]);
+    }
+  }
 }
