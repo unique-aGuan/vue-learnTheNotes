@@ -27,7 +27,9 @@
   var LIFECYCLE_HOOKS = ['beforeCreate', 'created', 'beforeMount', 'mounted', 'beforeUpdate', 'update', 'beforeDestroy', 'destroyed'];
   var strats = {};
 
-  strats.data = function () {};
+  strats.data = function (parentVal, childValue) {
+    return childValue; // 这里应该进行对象深度合并
+  };
 
   strats.computed = function () {};
 
@@ -51,8 +53,7 @@
   });
 
   function mergeOptions(parent, child) {
-    console.log(parent, child); // 遍历父亲 ，可能是父亲又 儿子没有
-
+    // 遍历父亲 ，可能是父亲又 儿子没有
     var options = {}; // 父亲有 儿子没有 循环出所有
 
     for (var key in parent) {
@@ -69,6 +70,8 @@
     function mergeField(key) {
       if (strats[key]) {
         options[key] = strats[key](parent[key], child[key]);
+      } else {
+        options[key] = child[key];
       } // 如果没有策略，就进行对象合并（小面试题）
 
     }
@@ -82,7 +85,6 @@
     Vue.mixin = function (mixin) {
       // 合并对象 （我先考虑生命周期）不考虑其他合并 data computed watch
       this.options = mergeOptions(this.options, mixin);
-      console.log(this.options);
     };
   } // 用户new vue 合并
 
@@ -141,7 +143,20 @@
   function mountComponent(vm, el) {
     // 调用render方法去渲染 el属性
     // 先调用render方法创建虚拟节点，再将虚拟节点渲染到页面上
+    callHook(vm, 'beforeMount');
+
     vm._update(vm._render());
+
+    callHook(vm, 'mounted');
+  }
+  function callHook(vm, hook) {
+    var handles = vm.$options[hook];
+
+    if (handles) {
+      for (var i = 0; i < handles.length; i++) {
+        handles[i].call(vm);
+      }
+    }
   }
 
   function _typeof(obj) {
@@ -588,8 +603,10 @@
   function initMixin(Vue) {
     Vue.prototype._init = function (options) {
       var vm = this;
-      vm.$options = options;
+      vm.$options = mergeOptions(vm.constructor.options, options);
+      callHook(vm, 'beforeCreate');
       initState(vm);
+      callHook(vm, 'created');
 
       if (vm.$options.el) {
         vm.$mount(vm.$options.el);

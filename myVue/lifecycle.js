@@ -9,5 +9,16 @@ export function lifecycleMixin (Vue) {
 export function mountComponent (vm, el) {
   // 调用render方法去渲染 el属性
   // 先调用render方法创建虚拟节点，再将虚拟节点渲染到页面上
+  callHook(vm, 'beforeMount');
   vm._update(vm._render());
+  callHook(vm, 'mounted')
+}
+
+export function callHook (vm, hook) {
+  const handles = vm.$options[hook];
+  if (handles) {
+    for (let i = 0; i < handles.length; i++) {
+      handles[i].call(vm);
+    }
+  }
 }

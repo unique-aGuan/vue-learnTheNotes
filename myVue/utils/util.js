@@ -17,7 +17,7 @@ function defineProperty (target, key, value) {
   })
 }
 
-export const LIFECYCLE_HOOKS = [
+const LIFECYCLE_HOOKS = [
   'beforeCreate',
   'created',
   'beforeMount',
@@ -29,7 +29,9 @@ export const LIFECYCLE_HOOKS = [
 ]
 
 const strats = {};
-strats.data = function () { }
+strats.data = function (parentVal, childValue) {
+  return childValue; // 这里应该进行对象深度合并
+}
 strats.computed = function () { }
 strats.watch = function () { }
 
@@ -49,7 +51,6 @@ LIFECYCLE_HOOKS.forEach(hook => {
   strats[hook] = mergeHook;
 })
 function mergeOptions (parent, child) {
-  console.log(parent, child)
   // 遍历父亲 ，可能是父亲又 儿子没有
   const options = {};
   // 父亲有 儿子没有 循环出所有
@@ -65,6 +66,8 @@ function mergeOptions (parent, child) {
   function mergeField (key) {
     if (strats[key]) {
       options[key] = strats[key](parent[key], child[key]);
+    } else {
+      options[key] = child[key]
     }
     // 如果没有策略，就进行对象合并（小面试题）
   }
@@ -74,5 +77,6 @@ function mergeOptions (parent, child) {
 export {
   proxy,
   defineProperty,
-  mergeOptions
+  mergeOptions,
+  LIFECYCLE_HOOKS
 }
