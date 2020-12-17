@@ -95,6 +95,7 @@
     parentElm.insertBefore(el, oldVnode.nextsibling); // 当前的真实元素插入到app的后面
 
     parentElm.removeChild(oldVnode);
+    return el;
   }
 
   function createEle(vnode) {
@@ -130,31 +131,6 @@
         el.className = el["class"];
       } else {
         el.setAttribute(key, newProps[key]);
-      }
-    }
-  }
-
-  function lifecycleMixin(Vue) {
-    Vue.prototype._update = function (vnode) {
-      var vm = this;
-      patch(vm.$el, vnode);
-    };
-  }
-  function mountComponent(vm, el) {
-    // 调用render方法去渲染 el属性
-    // 先调用render方法创建虚拟节点，再将虚拟节点渲染到页面上
-    callHook(vm, 'beforeMount');
-
-    vm._update(vm._render());
-
-    callHook(vm, 'mounted');
-  }
-  function callHook(vm, hook) {
-    var handles = vm.$options[hook];
-
-    if (handles) {
-      for (var i = 0; i < handles.length; i++) {
-        handles[i].call(vm);
       }
     }
   }
@@ -253,6 +229,114 @@
     throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
   }
 
+  var Dep = /*#__PURE__*/function () {
+    function Dep() {
+      _classCallCheck(this, Dep);
+
+      this.subs = [];
+    }
+
+    _createClass(Dep, [{
+      key: "depend",
+      value: function depend() {
+        this.subs.push(Dep.target);
+      }
+    }, {
+      key: "notify",
+      value: function notify() {
+        this.subs.forEach(function (watcher) {
+          return watcher.update();
+        });
+      }
+    }]);
+
+    return Dep;
+  }();
+
+  Dep.target = null;
+  function pushTarget(watcher) {
+    Dep.target = watcher; // 保留watcher
+  }
+  function popTarget() {
+    Dep.target = null; //  将变量删除
+  }
+  // dep 可以存多个watcher vm.$watch('name')
+  // 一个watcher可以对应多个dep
+
+  var id = 0;
+
+  var Watcher = /*#__PURE__*/function () {
+    function Watcher(vm, exprOrFn, cb, options) {
+      _classCallCheck(this, Watcher);
+
+      // vm 实例
+      // exprOrFn vm._update(vm._render());
+      // cb
+      this.vm = vm;
+      this.exprOrFn = exprOrFn;
+      this.cb = cb;
+      this.options = options;
+      this.id = id++; // watcher 的唯一标识
+
+      if (typeof exprOrFn == 'function') {
+        this.getter = exprOrFn;
+      }
+
+      this.get(); // 默认会调用get方法
+    }
+
+    _createClass(Watcher, [{
+      key: "get",
+      value: function get() {
+        pushTarget(this); //当前watcher实例
+
+        this.getter(); // 调用 渲染页面 会取值：render方法with(this)(_v(msg))
+
+        popTarget();
+      }
+    }, {
+      key: "update",
+      value: function update() {
+        this.get();
+      }
+    }]);
+
+    return Watcher;
+  }();
+
+  function lifecycleMixin(Vue) {
+    Vue.prototype._update = function (vnode) {
+      var vm = this;
+      vm.$el = patch(vm.$el, vnode);
+    };
+  }
+  function mountComponent(vm, el) {
+    vm.$el = el; // 调用render方法去渲染 el属性
+    // 先调用render方法创建虚拟节点，再将虚拟节点渲染到页面上
+
+    callHook(vm, 'beforeMount');
+
+    var updateComponent = function updateComponent() {
+      vm._update(vm._render());
+    }; // 这个Watcher是用于渲染的 目前没有任何功能
+
+
+    var watcher = new Watcher(vm, updateComponent, function () {
+      callHook(vm, 'beforeUpdate');
+    }, true); // 渲染watcher 只是一个名字
+
+    callHook(vm, 'mounted');
+  }
+  function callHook(vm, hook) {
+    var handles = vm.$options[hook];
+
+    if (handles) {
+      for (var i = 0; i < handles.length; i++) {
+        handles[i].call(vm);
+      }
+    }
+  }
+
   var oldArrayProtoMethods = Array.prototype;
   var arrayMethods = Object.create(oldArrayProtoMethods);
   var methods = ['push', 'pop', 'unshift', 'shift', 'splice', 'reverse', 'sort'];
@@ -345,9 +429,17 @@
 
   function defineReactive(data, key, value) {
     observe(value);
+    var dep = new Dep(); // 每个属性都有一个dep
+    // 当页面取值时，说明这个值用来渲染了，将这个watcher和这个属性对应起来
+
     Object.defineProperty(data, key, {
       get: function get() {
         console.log('用户获取值了', value);
+
+        if (Dep.target) {
+          dep.depend();
+        }
+
         return value;
       },
       set: function set(newValue) {
@@ -355,6 +447,7 @@
         if (newValue === value) return;
         observe(newValue);
         value = newValue;
+        dep.notify();
       }
     });
   }
@@ -618,7 +711,6 @@
       var vm = this;
       var options = vm.$options;
       el = document.querySelector(el);
-      vm.$el = el;
 
       if (!options.render) {
         // 如果没render 将template转换成render方法
@@ -634,7 +726,7 @@
       } // 挂载当前组件
 
 
-      mountComponent(vm);
+      mountComponent(vm, el);
     };
   }
 

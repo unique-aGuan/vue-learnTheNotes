@@ -51,8 +51,14 @@
       },
       computed() { },
       watch() { }
-    })
+    });
+
     // vue渲染的操作 1、默认会先找render方法 2、没人没有传出render方法会查找template 3、找当前el指定的元素中的内容进行渲染
+    setTimeout(() => {
+      vm.age = 24;
+    }, 1000)
+    // 数据变化 自动调用 vm._update(vm._render());
+    // vue更新策略是以组件为单位的，给每个组件都增加了一个watcher，属性变化后会重新调用这个watcher （渲染watcher）
   </script>
 </body>
 

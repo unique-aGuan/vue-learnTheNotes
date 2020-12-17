@@ -1,4 +1,5 @@
 import { arrayMethods } from "./data/array";
+import Dep from "./observer/dep";
 import { defineProperty, proxy } from "./utils/util";
 export function initState (vm) {
   const opts = vm.$options;
@@ -58,9 +59,16 @@ class Observe {
 
 function defineReactive (data, key, value) {
   observe(value);
+
+  let dep = new Dep(); // 每个属性都有一个dep
+
+  // 当页面取值时，说明这个值用来渲染了，将这个watcher和这个属性对应起来
   Object.defineProperty(data, key, {
     get () {
       console.log('用户获取值了', value)
+      if (Dep.target) {
+        dep.depend();
+      }
       return value;
     },
     set (newValue) {
@@ -68,6 +76,7 @@ function defineReactive (data, key, value) {
       if (newValue === value) return;
       observe(newValue);
       value = newValue;
+      dep.notify();
     }
   })
 }
