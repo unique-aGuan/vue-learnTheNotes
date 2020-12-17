@@ -22,9 +22,21 @@
         console.log('created...')
       }
     })
+    Vue.mixin({
+      created: function b() {
+        console.log('created...')
+      }
+    })
+    Vue.mixin({
+      created: function c() {
+        console.log('created...')
+      },
+      mounted: function m() {
+        console.log('mounted')
+      }
+    })
     let vm = new Vue({
       el: '#app',
-      // mixin:[],
       data() {
         return {
           name: 'aguan',

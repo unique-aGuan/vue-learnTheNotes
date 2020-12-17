@@ -4,11 +4,87 @@
   (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.Vue = factory());
 }(this, (function () { 'use strict';
 
-  function initGlobalApi(Vue) {
-    Vue.mixin = function (mixin) {
-      console.log(mixin);
-    };
+  function proxy(vm, data, key) {
+    Object.defineProperty(vm, key, {
+      get: function get() {
+        return vm[data][key];
+      },
+      set: function set(newValue) {
+        vm[data][key] = newValue;
+      }
+    });
   }
+
+  function defineProperty(target, key, value) {
+    Object.defineProperty(target, key, {
+      enumerable: false,
+      // 不能被枚举
+      configurable: false,
+      value: value
+    });
+  }
+
+  var LIFECYCLE_HOOKS = ['beforeCreate', 'created', 'beforeMount', 'mounted', 'beforeUpdate', 'update', 'beforeDestroy', 'destroyed'];
+  var strats = {};
+
+  strats.data = function () {};
+
+  strats.computed = function () {};
+
+  strats.watch = function () {};
+
+  function mergeHook(parentVal, childValue) {
+    if (childValue) {
+      if (parentVal) {
+        return parentVal.concat(childValue);
+      } else {
+        return [childValue];
+      }
+    } else {
+      return parentVal;
+    }
+  } // 循环
+
+
+  LIFECYCLE_HOOKS.forEach(function (hook) {
+    strats[hook] = mergeHook;
+  });
+
+  function mergeOptions(parent, child) {
+    console.log(parent, child); // 遍历父亲 ，可能是父亲又 儿子没有
+
+    var options = {}; // 父亲有 儿子没有 循环出所有
+
+    for (var key in parent) {
+      mergeField(key);
+    } // 儿子有 父亲没有 循环出所有
+
+
+    for (var _key in child) {
+      if (!parent.hasOwnProperty(_key)) {
+        mergeField(_key);
+      }
+    }
+
+    function mergeField(key) {
+      if (strats[key]) {
+        options[key] = strats[key](parent[key], child[key]);
+      } // 如果没有策略，就进行对象合并（小面试题）
+
+    }
+
+    return options;
+  }
+
+  function initGlobalApi(Vue) {
+    Vue.options = {};
+
+    Vue.mixin = function (mixin) {
+      // 合并对象 （我先考虑生命周期）不考虑其他合并 data computed watch
+      this.options = mergeOptions(this.options, mixin);
+      console.log(this.options);
+    };
+  } // 用户new vue 合并
 
   function patch(oldVnode, vnode) {
     // _c('div',{id:"app",style:{"color":" red"}},_v("你好："),_c('span',undefined,_v("阳光的"+_s(name)+"大人")),_c('div',{id:"age"},_v(_s(age))))
@@ -191,26 +267,6 @@
       return result;
     };
   });
-
-  function proxy(vm, data, key) {
-    Object.defineProperty(vm, key, {
-      get: function get() {
-        return vm[data][key];
-      },
-      set: function set(newValue) {
-        vm[data][key] = newValue;
-      }
-    });
-  }
-
-  function defineProperty(target, key, value) {
-    Object.defineProperty(target, key, {
-      enumerable: false,
-      // 不能被枚举
-      configurable: false,
-      value: value
-    });
-  }
 
   function initState(vm) {
     var opts = vm.$options;
