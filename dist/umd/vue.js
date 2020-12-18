@@ -229,17 +229,27 @@
     throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
   }
 
+  var id = 0;
+
   var Dep = /*#__PURE__*/function () {
     function Dep() {
       _classCallCheck(this, Dep);
 
       this.subs = [];
+      this.id = id++;
     }
 
     _createClass(Dep, [{
       key: "depend",
       value: function depend() {
-        this.subs.push(Dep.target);
+        // 我们希望 watcher 可以存放dep
+        // this.subs.push(Dep.target) // 存进去了一个watcher
+        Dep.target.addDep(this);
+      }
+    }, {
+      key: "addSub",
+      value: function addSub(watcher) {
+        this.subs.push(watcher);
       }
     }, {
       key: "notify",
@@ -263,7 +273,7 @@
   // dep 可以存多个watcher vm.$watch('name')
   // 一个watcher可以对应多个dep
 
-  var id = 0;
+  var id$1 = 0;
 
   var Watcher = /*#__PURE__*/function () {
     function Watcher(vm, exprOrFn, cb, options) {
@@ -276,7 +286,11 @@
       this.exprOrFn = exprOrFn;
       this.cb = cb;
       this.options = options;
-      this.id = id++; // watcher 的唯一标识
+      this.id = id$1++; // watcher 的唯一标识
+
+      this.deps = []; // watcher记录有多少个dep来依赖它
+
+      this.depsId = new Set();
 
       if (typeof exprOrFn == 'function') {
         this.getter = exprOrFn;
@@ -286,6 +300,17 @@
     }
 
     _createClass(Watcher, [{
+      key: "addDep",
+      value: function addDep(dep) {
+        var id = dep.id;
+
+        if (!this.depsId.has(id)) {
+          this.deps.push(dep);
+          this.depsId.add(id);
+          dep.addSub(this);
+        }
+      }
+    }, {
       key: "get",
       value: function get() {
         pushTarget(this); //当前watcher实例
@@ -363,6 +388,7 @@
       }
 
       if (inserted) ob.observeArray(inserted);
+      ob.dep.notify();
       return result;
     };
   });
@@ -394,7 +420,8 @@
     function Observe(value) {
       _classCallCheck(this, Observe);
 
-      // 判断一个对象是否被检测过
+      this.dep = new Dep(); // 判断一个对象是否被检测过
+
       defineProperty(value, '__ob__', this);
 
       if (Array.isArray(value)) {
@@ -428,7 +455,8 @@
   }();
 
   function defineReactive(data, key, value) {
-    observe(value);
+    // 获取到数组对应的dep
+    var childDep = observe(value);
     var dep = new Dep(); // 每个属性都有一个dep
     // 当页面取值时，说明这个值用来渲染了，将这个watcher和这个属性对应起来
 
@@ -438,6 +466,10 @@
 
         if (Dep.target) {
           dep.depend();
+
+          if (childDep) {
+            childDep.dep.depend();
+          }
         }
 
         return value;

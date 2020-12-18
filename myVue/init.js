@@ -33,6 +33,7 @@ function initData (vm) {
 
 class Observe {
   constructor(value) {
+    this.dep = new Dep();
     // 判断一个对象是否被检测过
     defineProperty(value, '__ob__', this)
     if (Array.isArray(value)) {
@@ -58,7 +59,8 @@ class Observe {
 }
 
 function defineReactive (data, key, value) {
-  observe(value);
+  // 获取到数组对应的dep
+  let childDep = observe(value);
 
   let dep = new Dep(); // 每个属性都有一个dep
 
@@ -68,6 +70,9 @@ function defineReactive (data, key, value) {
       console.log('用户获取值了', value)
       if (Dep.target) {
         dep.depend();
+        if (childDep) {
+          childDep.dep.depend();
+        }
       }
       return value;
     },

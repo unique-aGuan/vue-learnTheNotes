@@ -1,9 +1,16 @@
+let id = 0;
 class Dep {
   constructor() {
     this.subs = [];
+    this.id = id++;
   }
   depend () {
-    this.subs.push(Dep.target)
+    // 我们希望 watcher 可以存放dep
+    // this.subs.push(Dep.target) // 存进去了一个watcher
+    Dep.target.addDep(this);
+  }
+  addSub (watcher) {
+    this.subs.push(watcher)
   }
   notify () {
     this.subs.forEach(watcher => watcher.update())
