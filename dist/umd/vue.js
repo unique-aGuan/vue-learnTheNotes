@@ -29,11 +29,9 @@
 
   strats.data = function (parentVal, childValue) {
     return childValue; // 这里应该进行对象深度合并
-  };
+  }; // strats.computed = function () { }
+  // strats.watch = function () { }
 
-  strats.computed = function () {};
-
-  strats.watch = function () {};
 
   function mergeHook(parentVal, childValue) {
     if (childValue) {
@@ -332,6 +330,8 @@
       this.exprOrFn = exprOrFn;
       this.cb = cb;
       this.options = options;
+      this.isWatcher = options; // 是渲染watcher
+
       this.id = id$1++; // watcher 的唯一标识
 
       this.deps = []; // watcher记录有多少个dep来依赖它
@@ -483,6 +483,11 @@
     if (opts.data) {
       initData(vm);
     }
+
+    if (opts.watch) {
+      console.log(opts);
+      initWatch(vm);
+    }
   }
 
   function initData(vm) {
@@ -494,6 +499,41 @@
     }
 
     observe$1(data);
+  }
+
+  function initWatch(vm) {
+    var watch = vm.$options.watch;
+
+    var _loop = function _loop(key) {
+      var handler = watch[key]; // handler 可能是
+
+      if (Array.isArray(handler)) {
+        //  数组
+        handler.forEach(function (handler) {
+          createWatcher(vm, key, handler);
+        });
+      } else {
+        createWatcher(vm, key, handler); // 字符串， 对象， 函数
+      }
+    };
+
+    for (var key in watch) {
+      _loop(key);
+    }
+  }
+
+  function createWatcher(vm, exproOrFn, handler, options) {
+    // options 可以用来标识 是用户
+    if (_typeof(handler) == 'object') {
+      options = handler;
+      handler = handler.handler;
+    }
+
+    if (typeof handler == 'string') {
+      handler = vm[handler];
+    }
+
+    return vm.$watch(exproOrFn, handler, options);
   }
 
   var Observe = /*#__PURE__*/function () {
@@ -844,6 +884,10 @@
   function stateMixin(Vue) {
     Vue.prototype.$nextTick = function (cb) {
       nextTick(cb);
+    };
+
+    Vue.prototype.$watch = function (exproOrFn, handler, options) {
+      console.log(exproOrFn, handler, options);
     };
   }
 

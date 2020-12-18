@@ -11,6 +11,7 @@ class Watcher {
     this.exprOrFn = exprOrFn;
     this.cb = cb;
     this.options = options;
+    this.isWatcher = options; // 是渲染watcher
     this.id = id++; // watcher 的唯一标识
     this.deps = []; // watcher记录有多少个dep来依赖它
     this.depsId = new Set();

@@ -32,8 +32,8 @@ const strats = {};
 strats.data = function (parentVal, childValue) {
   return childValue; // 这里应该进行对象深度合并
 }
-strats.computed = function () { }
-strats.watch = function () { }
+// strats.computed = function () { }
+// strats.watch = function () { }
 
 function mergeHook (parentVal, childValue) {
   if (childValue) {

@@ -15,7 +15,7 @@ export default {
     }),
     process.env.ENV === 'development' ? serve({
       open: true,
-      openPage: '/public/index.html', // 默认打开html路径
+      openPage: '/public/text.html', // 默认打开html路径
       port: 3000,
       contentBase: ''
     }) : null

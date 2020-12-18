@@ -12,6 +12,10 @@ export function initState (vm) {
   if (opts.data) {
     initData(vm);
   }
+  if (opts.watch) {
+    console.log(opts)
+    initWatch(vm);
+  }
 }
 
 function initProps (vm) {
@@ -29,6 +33,31 @@ function initData (vm) {
     proxy(vm, '_data', key);
   }
   observe(data);
+}
+
+function initWatch (vm) {
+  let watch = vm.$options.watch;
+  for (let key in watch) {
+    const handler = watch[key]; // handler 可能是
+    if (Array.isArray(handler)) { //  数组
+      handler.forEach(handler => {
+        createWatcher(vm, key, handler)
+      })
+    } else {
+      createWatcher(vm, key, handler); // 字符串， 对象， 函数
+    }
+  }
+}
+
+function createWatcher (vm, exproOrFn, handler, options) { // options 可以用来标识 是用户
+  if (typeof handler == 'object') {
+    options = handler;
+    handler = handler.handler;
+  }
+  if (typeof handler == 'string') {
+    handler = vm[handler];
+  }
+  return vm.$watch(exproOrFn, handler, options);
 }
 
 class Observe {

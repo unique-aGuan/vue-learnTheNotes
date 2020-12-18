@@ -5,4 +5,7 @@ export function stateMixin (Vue) {
     let vm = this;
     nextTick(cb)
   }
+  Vue.prototype.$watch = function (exproOrFn, handler, options) {
+    console.log(exproOrFn, handler, options)
+  }
 }
