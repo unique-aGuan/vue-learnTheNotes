@@ -79,6 +79,52 @@
     return options;
   }
 
+  var callbacks = [];
+
+  function flushCallbacks() {
+    callbacks.forEach(function (cb) {
+      return cb();
+    });
+    pending = false;
+  }
+
+  var timerFunc;
+
+  if (Promise) {
+    timerFunc = function timerFunc() {
+      Promise.resolve().then(flushCallbacks);
+    };
+  } else if (MutationObserver) {
+    // h5 的API 可以监控dom变化，监控完毕后是异步更新
+    var observe = new MutationObserver(flushCallbacks);
+    var textNode = document.createTextNode(1);
+    observe.observe(textNode, {
+      characterData: true
+    });
+
+    timerFunc = function timerFunc() {
+      textNode.textContent = 2;
+    };
+  } else if (setImmediate) {
+    timerFunc = function timerFunc() {
+      setImmediate(flushCallbacks);
+    };
+  } else {
+    setTimeout(flushCallbacks);
+  }
+
+  var pending = false;
+
+  function nextTick(cb) {
+    // 因为内部回调用nextTick 用户也会调用 但是异步只需要一次
+    callbacks.push(cb);
+
+    if (!pending) {
+      timerFunc();
+      pending = true;
+    }
+  }
+
   function initGlobalApi(Vue) {
     Vue.options = {};
 
@@ -320,14 +366,48 @@
         popTarget();
       }
     }, {
+      key: "run",
+      value: function run() {
+        this.get();
+      }
+    }, {
       key: "update",
       value: function update() {
-        this.get();
+        queueWatcher(this); // 暂存的概念
+        // this.get();
       }
     }]);
 
     return Watcher;
   }();
+
+  var queue = []; // 将需要批量更新的watcher 存到一个队列中，稍后让watcher执行
+
+  var has = {};
+  var pending$1 = false;
+
+  function flushSchedulerQueue() {
+    queue.forEach(function (watcher) {
+      return watcher.run();
+    });
+    queue = [];
+    has = {};
+    pending$1 = false;
+  }
+
+  function queueWatcher(watcher) {
+    var id = watcher.id;
+
+    if (has[id] == null) {
+      queue.push(watcher);
+      has[id] = true; // 等待所有同步代码执行完毕后再执行
+
+      if (!pending$1) {
+        nextTick(flushSchedulerQueue);
+        pending$1 = true;
+      }
+    }
+  }
 
   function lifecycleMixin(Vue) {
     Vue.prototype._update = function (vnode) {
@@ -413,7 +493,7 @@
       proxy(vm, '_data', key);
     }
 
-    observe(data);
+    observe$1(data);
   }
 
   var Observe = /*#__PURE__*/function () {
@@ -446,7 +526,7 @@
       key: "observeArray",
       value: function observeArray(value) {
         value.forEach(function (item) {
-          observe(item);
+          observe$1(item);
         });
       }
     }]);
@@ -456,14 +536,13 @@
 
   function defineReactive(data, key, value) {
     // 获取到数组对应的dep
-    var childDep = observe(value);
+    var childDep = observe$1(value);
     var dep = new Dep(); // 每个属性都有一个dep
     // 当页面取值时，说明这个值用来渲染了，将这个watcher和这个属性对应起来
 
     Object.defineProperty(data, key, {
       get: function get() {
-        console.log('用户获取值了', value);
-
+        // console.log('用户获取值了', value)
         if (Dep.target) {
           dep.depend();
 
@@ -475,16 +554,16 @@
         return value;
       },
       set: function set(newValue) {
-        console.log('用户设置值了');
+        // console.log('用户设置值了');
         if (newValue === value) return;
-        observe(newValue);
+        observe$1(newValue);
         value = newValue;
         dep.notify();
       }
     });
   }
 
-  function observe(data) {
+  function observe$1(data) {
     if (_typeof(data) !== 'object' || data == null) return;
 
     if (data.__ob__) {
@@ -762,6 +841,12 @@
     };
   }
 
+  function stateMixin(Vue) {
+    Vue.prototype.$nextTick = function (cb) {
+      nextTick(cb);
+    };
+  }
+
   function renderMixin(Vue) {
     // 用对象来描述dom的结构
     // _c('div',{id:"app",style:{"color":" red"}},_v("你好："),_c('span',undefined,_v("阳光的"+_s(name)+"大人")),_c('div',{id:"age"},_v(_s(age))))
@@ -819,7 +904,8 @@
 
   initMixin(Vue);
   lifecycleMixin(Vue);
-  renderMixin(Vue); // 静态方法 Vue.component Vue.directive Vue.extend Vue.mixin
+  renderMixin(Vue);
+  stateMixin(Vue); // 静态方法 Vue.component Vue.directive Vue.extend Vue.mixin
 
   initGlobalApi(Vue);
 

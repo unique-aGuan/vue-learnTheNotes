@@ -73,10 +73,46 @@ function mergeOptions (parent, child) {
   }
   return options;
 }
+const callbacks = [];
+
+function flushCallbacks () {
+  callbacks.forEach(cb => cb());
+  pending = false;
+}
+
+let timerFunc;
+if (Promise) {
+  timerFunc = () => {
+    Promise.resolve().then(flushCallbacks);
+  }
+} else if (MutationObserver) {
+  // h5 的API 可以监控dom变化，监控完毕后是异步更新
+  let observe = new MutationObserver(flushCallbacks);
+  let textNode = document.createTextNode(1);
+  observe.observe(textNode, { characterData: true });
+  timerFunc = () => {
+    textNode.textContent = 2;
+  }
+} else if (setImmediate) {
+  timerFunc = () => {
+    setImmediate(flushCallbacks)
+  }
+} else {
+  setTimeout(flushCallbacks);
+}
+let pending = false;
+function nextTick (cb) { // 因为内部回调用nextTick 用户也会调用 但是异步只需要一次
+  callbacks.push(cb);
+  if (!pending) {
+    timerFunc();
+    pending = true;
+  }
+}
 
 export {
   proxy,
   defineProperty,
   mergeOptions,
-  LIFECYCLE_HOOKS
+  LIFECYCLE_HOOKS,
+  nextTick
 }

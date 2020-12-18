@@ -67,7 +67,7 @@ function defineReactive (data, key, value) {
   // 当页面取值时，说明这个值用来渲染了，将这个watcher和这个属性对应起来
   Object.defineProperty(data, key, {
     get () {
-      console.log('用户获取值了', value)
+      // console.log('用户获取值了', value)
       if (Dep.target) {
         dep.depend();
         if (childDep) {
@@ -77,7 +77,7 @@ function defineReactive (data, key, value) {
       return value;
     },
     set (newValue) {
-      console.log('用户设置值了');
+      // console.log('用户设置值了');
       if (newValue === value) return;
       observe(newValue);
       value = newValue;
