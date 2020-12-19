@@ -1213,29 +1213,7 @@
   renderMixin(Vue);
   stateMixin(Vue); // 静态方法 Vue.component Vue.directive Vue.extend Vue.mixin
 
-  initGlobalApi(Vue); // 为了看到diff的整个流程 创建两个虚拟节点进行对比操作
-  var vm1 = new Vue({
-    data: {
-      name: 'ag'
-    }
-  });
-  var render1 = compileToFunction("<div id=\"a\">\n<li style=\"background:red\" key=\"a\">A</li>\n<li style=\"background:yellow\" key=\"b\">B</li>\n<li style=\"background:pink\" key=\"c\">C</li>\n<li style=\"background:greenyellow\" key=\"d\">D</li>\n</div>");
-  var vnode1 = render1.call(vm1); // render方法返回的就是一个虚拟dom
-
-  document.body.appendChild(createEle(vnode1));
-  var vm2 = new Vue({
-    data: {
-      name: 'ga'
-    }
-  });
-  var render2 = compileToFunction("<div id=\"a\">\n<li style=\"background:gray\" key=\"s\">S</li>\n<li key=\"i\">i</li>\n<li style=\"background:greenyellow\" key=\"d\">D</li>\n<li style=\"background:pink\" key=\"c\">C</li>\n<li style=\"background:blue\" key=\"p\">P</li>\n<li style=\"background:yellow\" key=\"b\">B</li>\n<li style=\"background:red\" key=\"a\">A</li>\n</div>");
-  var vnode2 = render2.call(vm2); // render方法返回的就是一个虚拟dom
-  // document.body.appendChild(createEle(vnode2));
-  // 传入一个新的节点和老的做对比
-
-  setTimeout(function () {
-    patch(vnode1, vnode2);
-  }, 1000);
+  initGlobalApi(Vue);
 
   return Vue;
 
