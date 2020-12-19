@@ -216,17 +216,24 @@
 
     while (oldStartIndex <= oldEndIndex && newStartIndex <= newEndIndex) {
       if (isSameVnode(oldStartVnode, newStartVnode)) {
-        // 如果俩人是同一个元素，对比儿子
+        // 如果俩人（开头）是同一个元素，递归深入后，自增
         patch(oldStartVnode, newStartVnode); // 更新属性和style再去递归更新字节点
 
         oldStartVnode = oldChildren[++oldStartIndex];
         newStartVnode = newChildren[++newStartIndex];
+      } else if (isSameVnode(oldEndVnode, newEndVnode)) {
+        // 如果俩人（结尾）是同一个元素，递归深入后，自增
+        patch(oldEndVnode, newEndVnode); // 更新属性和style再去递归更新字节点
+
+        oldEndVnode = oldChildren[--oldEndIndex];
+        newEndVnode = newChildren[--newEndIndex];
       }
     }
 
     if (newStartIndex <= newEndIndex) {
       for (var i = newStartIndex; i <= newEndIndex; i++) {
-        parent.appendChild(createEle(newChildren[i]));
+        var ele = newChildren[newEndIndex + 1] == null ? null : newChildren[newEndIndex + 1].el;
+        parent.insertBefore(createEle(newChildren[i]), ele);
       }
     }
   }
@@ -1151,7 +1158,7 @@
       name: 'ag'
     }
   });
-  var render1 = compileToFunction("<div id=\"a\">\n<li style=\"background:red\">A</li>\n<li style=\"background:yellow\">B</li>\n<li style=\"background:pink\">C</li>\n<li style=\"background:greenyellow\">D</li>\n</div>");
+  var render1 = compileToFunction("<div id=\"a\">\n<li style=\"background:red\" key=\"a\">A</li>\n<li style=\"background:yellow\" key=\"b\">B</li>\n<li style=\"background:pink\" key=\"c\">C</li>\n<li style=\"background:greenyellow\" key=\"d\">D</li>\n</div>");
   var vnode1 = render1.call(vm1); // render方法返回的就是一个虚拟dom
 
   document.body.appendChild(createEle(vnode1));
@@ -1160,7 +1167,7 @@
       name: 'ga'
     }
   });
-  var render2 = compileToFunction("<div id=\"a\">\n<li style=\"background:red\">A</li>\n<li style=\"background:yellow\">B</li>\n<li style=\"background:pink\">C</li>\n<li style=\"background:greenyellow\">D</li>\n<li style=\"background:blue\">E</li>\n</div>");
+  var render2 = compileToFunction("<div id=\"a\">\n<li style=\"background:blue\" key=\"e\">E</li>\n<li style=\"background:red\" key=\"a\">A</li>\n<li style=\"background:yellow\" key=\"b\">B</li>\n<li style=\"background:pink\" key=\"c\">C</li>\n<li style=\"background:greenyellow\" key=\"d\">D</li>\n</div>");
   var vnode2 = render2.call(vm2); // render方法返回的就是一个虚拟dom
   // document.body.appendChild(createEle(vnode2));
   // 传入一个新的节点和老的做对比

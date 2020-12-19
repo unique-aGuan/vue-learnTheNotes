@@ -74,15 +74,20 @@ function updateChildren (oldChildren, newChildren, parent) {
   // 我要做一个循环，同时循环老的和新的，哪个先结束，循环就停止，将多余的删除或者添加进去
   // 谁先循环完 停止
   while (oldStartIndex <= oldEndIndex && newStartIndex <= newEndIndex) {
-    if (isSameVnode(oldStartVnode, newStartVnode)) { // 如果俩人是同一个元素，对比儿子
+    if (isSameVnode(oldStartVnode, newStartVnode)) { // 如果俩人（开头）是同一个元素，递归深入后，自增
       patch(oldStartVnode, newStartVnode); // 更新属性和style再去递归更新字节点
       oldStartVnode = oldChildren[++oldStartIndex];
       newStartVnode = newChildren[++newStartIndex];
+    } else if (isSameVnode(oldEndVnode, newEndVnode)) { // 如果俩人（结尾）是同一个元素，递归深入后，自增
+      patch(oldEndVnode, newEndVnode); // 更新属性和style再去递归更新字节点
+      oldEndVnode = oldChildren[--oldEndIndex];
+      newEndVnode = newChildren[--newEndIndex];
     }
   }
   if (newStartIndex <= newEndIndex) {
     for (let i = newStartIndex; i <= newEndIndex; i++) {
-      parent.appendChild(createEle(newChildren[i]));
+      let ele = newChildren[newEndIndex + 1] == null ? null : newChildren[newEndIndex + 1].el;
+      parent.insertBefore(createEle(newChildren[i]), ele);
     }
 
   }
