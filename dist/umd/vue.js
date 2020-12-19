@@ -214,8 +214,22 @@
     // 我要做一个循环，同时循环老的和新的，哪个先结束，循环就停止，将多余的删除或者添加进去
     // 谁先循环完 停止
 
+    function makeIndexByKey(children) {
+      var map = {};
+      children.forEach(function (item, index) {
+        map[item.key] = index; // 建立映射表，存储key值所在的位置
+      });
+      return map;
+    }
+
+    var map = makeIndexByKey(oldChildren);
+
     while (oldStartIndex <= oldEndIndex && newStartIndex <= newEndIndex) {
-      if (isSameVnode(oldStartVnode, newStartVnode)) {
+      if (!oldStartVnode) {
+        oldStartVnode = oldChildren[++oldStartIndex];
+      } else if (!oldEndVnode) {
+        oldEndVnode = oldChildren[--oldEndIndex];
+      } else if (isSameVnode(oldStartVnode, newStartVnode)) {
         // 如果俩人（开头）是同一个元素，递归深入后，自增
         patch(oldStartVnode, newStartVnode); // 更新属性和style再去递归更新字节点
 
@@ -237,6 +251,21 @@
         parent.insertBefore(oldEndVnode.el, oldStartVnode.el);
         newStartVnode = newChildren[++newStartIndex];
         oldEndVnode = oldChildren[--oldEndIndex];
+      } else {
+        // 儿子之间没有关系 ..... 暴力对比
+        var moveIndex = map[newStartVnode.key]; // 拿到开头的虚拟节点的key 去老的中找
+        // 可能moveIndex根本不存在
+
+        if (moveIndex == undefined) {
+          parent.insertBefore(createEle(newStartVnode), oldStartVnode.el);
+        } else {
+          var moveVNode = oldChildren[moveIndex];
+          oldChildren[moveIndex] = null;
+          parent.insertBefore(moveVNode, oldStartVnode.el);
+          patch(moveVNode, newStartVnode); // 比较属性和儿子
+        }
+
+        newStartVnode = newChildren[++newStartIndex];
       }
     }
 
@@ -244,6 +273,17 @@
       for (var i = newStartIndex; i <= newEndIndex; i++) {
         var ele = newChildren[newEndIndex + 1] == null ? null : newChildren[newEndIndex + 1].el;
         parent.insertBefore(createEle(newChildren[i]), ele);
+      }
+    } // 老的节点还没有处理的，说明这些老节点是不需要的节点，如果这里面有null说明，这个节点已经被处理过了，跳过即可
+
+
+    if (oldStartIndex <= oldEndIndex) {
+      for (var _i = oldStartIndex; _i <= oldEndIndex; _i++) {
+        var child = oldChildren[_i];
+
+        if (child != null) {
+          parent.removeChild(child.el);
+        }
       }
     }
   }
@@ -1177,14 +1217,14 @@
       name: 'ga'
     }
   });
-  var render2 = compileToFunction("<div id=\"a\">\n<li style=\"background:greenyellow\" key=\"d\">D</li>\n<li style=\"background:pink\" key=\"c\">C</li>\n<li style=\"background:yellow\" key=\"b\">B</li>\n<li style=\"background:red\" key=\"a\">A</li>\n</div>");
+  var render2 = compileToFunction("<div id=\"a\">\n<li style=\"background:gray\" key=\"s\">S</li>\n<li key=\"i\">i</li>\n<li style=\"background:greenyellow\" key=\"d\">D</li>\n<li style=\"background:pink\" key=\"c\">C</li>\n<li style=\"background:blue\" key=\"p\">P</li>\n<li style=\"background:yellow\" key=\"b\">B</li>\n<li style=\"background:red\" key=\"a\">A</li>\n</div>");
   var vnode2 = render2.call(vm2); // render方法返回的就是一个虚拟dom
   // document.body.appendChild(createEle(vnode2));
   // 传入一个新的节点和老的做对比
 
   setTimeout(function () {
     patch(vnode1, vnode2);
-  }, 100);
+  }, 1000);
 
   return Vue;
 

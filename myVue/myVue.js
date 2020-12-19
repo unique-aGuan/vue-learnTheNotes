@@ -32,8 +32,11 @@ let vnode1 = render1.call(vm1); // render方法返回的就是一个虚拟dom
 document.body.appendChild(createEle(vnode1));
 let vm2 = new Vue({ data: { name: 'ga' } })
 let render2 = compileToFunction(`<div id="a">
+<li style="background:gray" key="s">S</li>
+<li key="i">i</li>
 <li style="background:greenyellow" key="d">D</li>
 <li style="background:pink" key="c">C</li>
+<li style="background:blue" key="p">P</li>
 <li style="background:yellow" key="b">B</li>
 <li style="background:red" key="a">A</li>
 </div>`);
@@ -44,5 +47,5 @@ let vnode2 = render2.call(vm2); // render方法返回的就是一个虚拟dom
 // 传入一个新的节点和老的做对比
 setTimeout(() => {
   patch(vnode1, vnode2)
-}, 100)
+}, 1000)
 export default Vue;

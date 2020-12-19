@@ -73,8 +73,20 @@ function updateChildren (oldChildren, newChildren, parent) {
   // 在尾部添加
   // 我要做一个循环，同时循环老的和新的，哪个先结束，循环就停止，将多余的删除或者添加进去
   // 谁先循环完 停止
+  function makeIndexByKey (children) {
+    let map = {}
+    children.forEach((item, index) => {
+      map[item.key] = index; // 建立映射表，存储key值所在的位置
+    })
+    return map;
+  }
+  let map = makeIndexByKey(oldChildren);
   while (oldStartIndex <= oldEndIndex && newStartIndex <= newEndIndex) {
-    if (isSameVnode(oldStartVnode, newStartVnode)) { // 如果俩人（开头）是同一个元素，递归深入后，自增
+    if (!oldStartVnode) {
+      oldStartVnode = oldChildren[++oldStartIndex];
+    } else if (!oldEndVnode) {
+      oldEndVnode = oldChildren[--oldEndIndex];
+    } else if (isSameVnode(oldStartVnode, newStartVnode)) { // 如果俩人（开头）是同一个元素，递归深入后，自增
       patch(oldStartVnode, newStartVnode); // 更新属性和style再去递归更新字节点
       oldStartVnode = oldChildren[++oldStartIndex];
       newStartVnode = newChildren[++newStartIndex];
@@ -92,6 +104,19 @@ function updateChildren (oldChildren, newChildren, parent) {
       parent.insertBefore(oldEndVnode.el, oldStartVnode.el);
       newStartVnode = newChildren[++newStartIndex];
       oldEndVnode = oldChildren[--oldEndIndex];
+    } else {
+      // 儿子之间没有关系 ..... 暴力对比
+      let moveIndex = map[newStartVnode.key]; // 拿到开头的虚拟节点的key 去老的中找
+      // 可能moveIndex根本不存在
+      if (moveIndex == undefined) {
+        parent.insertBefore(createEle(newStartVnode), oldStartVnode.el);
+      } else {
+        let moveVNode = oldChildren[moveIndex];
+        oldChildren[moveIndex] = null;
+        parent.insertBefore(moveVNode, oldStartVnode.el);
+        patch(moveVNode, newStartVnode); // 比较属性和儿子
+      }
+      newStartVnode = newChildren[++newStartIndex];
     }
   }
   if (newStartIndex <= newEndIndex) {
@@ -99,7 +124,15 @@ function updateChildren (oldChildren, newChildren, parent) {
       let ele = newChildren[newEndIndex + 1] == null ? null : newChildren[newEndIndex + 1].el;
       parent.insertBefore(createEle(newChildren[i]), ele);
     }
-
+  }
+  // 老的节点还没有处理的，说明这些老节点是不需要的节点，如果这里面有null说明，这个节点已经被处理过了，跳过即可
+  if (oldStartIndex <= oldEndIndex) {
+    for (let i = oldStartIndex; i <= oldEndIndex; i++) {
+      let child = oldChildren[i];
+      if (child != null) {
+        parent.removeChild(child.el);
+      }
+    }
   }
 
 }
