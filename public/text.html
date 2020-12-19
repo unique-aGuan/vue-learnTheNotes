@@ -18,10 +18,12 @@
       data: { a: 1 },
       watch: {
         'a'(newValue, oldValue) {
-          console.log(newvalue)
+          console.log(newValue, oldValue)
         }
       }
     })
+    vm.a = 100;
+    setTimeout(() => { vm.a = 200; });
   </script>
 </body>
 

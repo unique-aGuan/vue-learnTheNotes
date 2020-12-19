@@ -13,7 +13,6 @@ export function initState (vm) {
     initData(vm);
   }
   if (opts.watch) {
-    console.log(opts)
     initWatch(vm);
   }
 }

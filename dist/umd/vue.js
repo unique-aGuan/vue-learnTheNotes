@@ -217,6 +217,55 @@
     return Constructor;
   }
 
+  function _defineProperty(obj, key, value) {
+    if (key in obj) {
+      Object.defineProperty(obj, key, {
+        value: value,
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
+    } else {
+      obj[key] = value;
+    }
+
+    return obj;
+  }
+
+  function ownKeys(object, enumerableOnly) {
+    var keys = Object.keys(object);
+
+    if (Object.getOwnPropertySymbols) {
+      var symbols = Object.getOwnPropertySymbols(object);
+      if (enumerableOnly) symbols = symbols.filter(function (sym) {
+        return Object.getOwnPropertyDescriptor(object, sym).enumerable;
+      });
+      keys.push.apply(keys, symbols);
+    }
+
+    return keys;
+  }
+
+  function _objectSpread2(target) {
+    for (var i = 1; i < arguments.length; i++) {
+      var source = arguments[i] != null ? arguments[i] : {};
+
+      if (i % 2) {
+        ownKeys(Object(source), true).forEach(function (key) {
+          _defineProperty(target, key, source[key]);
+        });
+      } else if (Object.getOwnPropertyDescriptors) {
+        Object.defineProperties(target, Object.getOwnPropertyDescriptors(source));
+      } else {
+        ownKeys(Object(source)).forEach(function (key) {
+          Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key));
+        });
+      }
+    }
+
+    return target;
+  }
+
   function _slicedToArray(arr, i) {
     return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest();
   }
@@ -330,7 +379,9 @@
       this.exprOrFn = exprOrFn;
       this.cb = cb;
       this.options = options;
-      this.isWatcher = options; // 是渲染watcher
+      this.user = options.user; // 这个一个用户watcher
+
+      this.isWatcher = typeof options === 'boolean' ? options : false;
 
       this.id = id$1++; // watcher 的唯一标识
 
@@ -340,9 +391,23 @@
 
       if (typeof exprOrFn == 'function') {
         this.getter = exprOrFn;
+      } else {
+        this.getter = function () {
+          //exprOrFn 可能是字符串a
+          // 去当前实例上去取值是才会触发依赖收集
+          var path = exprOrFn.split('.'); // ['a'.'a'.'a']
+
+          var obj = vm;
+
+          for (var i = 0; i < path.length; i++) {
+            obj = obj[path[i]];
+          }
+
+          return obj;
+        };
       }
 
-      this.get(); // 默认会调用get方法
+      this.value = this.get(); // 默认会调用get方法
     }
 
     _createClass(Watcher, [{
@@ -361,14 +426,21 @@
       value: function get() {
         pushTarget(this); //当前watcher实例
 
-        this.getter(); // 调用 渲染页面 会取值：render方法with(this)(_v(msg))
+        var result = this.getter(); // 调用 渲染页面 会取值：render方法with(this)(_v(msg))
 
         popTarget();
+        return result;
       }
     }, {
       key: "run",
       value: function run() {
-        this.get();
+        var newValue = this.get();
+        var oldValue = this.value;
+        this.value = newValue;
+
+        if (this.user) {
+          this.cb.call(this.vm, newValue, oldValue);
+        }
       }
     }, {
       key: "update",
@@ -388,7 +460,11 @@
 
   function flushSchedulerQueue() {
     queue.forEach(function (watcher) {
-      return watcher.run();
+      watcher.run();
+
+      if (!watcher.user) {
+        watcher.cb();
+      }
     });
     queue = [];
     has = {};
@@ -485,7 +561,6 @@
     }
 
     if (opts.watch) {
-      console.log(opts);
       initWatch(vm);
     }
   }
@@ -886,8 +961,20 @@
       nextTick(cb);
     };
 
-    Vue.prototype.$watch = function (exproOrFn, handler, options) {
-      console.log(exproOrFn, handler, options);
+    Vue.prototype.$watch = function (exproOrFn, handler) {
+      var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+
+      if (!options.user) {
+        options = _objectSpread2(_objectSpread2({}, options), {}, {
+          user: true
+        });
+      }
+
+      var watcher = new Watcher(this, exproOrFn, handler, options);
+
+      if (options.immediate) {
+        handler();
+      }
     };
   }
 
