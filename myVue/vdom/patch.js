@@ -82,6 +82,16 @@ function updateChildren (oldChildren, newChildren, parent) {
       patch(oldEndVnode, newEndVnode); // 更新属性和style再去递归更新字节点
       oldEndVnode = oldChildren[--oldEndIndex];
       newEndVnode = newChildren[--newEndIndex];
+    } else if (isSameVnode(oldStartVnode, newEndVnode)) {
+      patch(oldStartVnode, newEndVnode);
+      parent.insertBefore(oldStartVnode.el, oldEndVnode.el.nextsibling);
+      newEndVnode = newChildren[--newEndIndex];
+      oldStartVnode = oldChildren[++oldStartIndex];
+    } else if (isSameVnode(oldEndVnode, newStartVnode)) {
+      patch(oldEndVnode, newStartVnode);
+      parent.insertBefore(oldEndVnode.el, oldStartVnode.el);
+      newStartVnode = newChildren[++newStartIndex];
+      oldEndVnode = oldChildren[--oldEndIndex];
     }
   }
   if (newStartIndex <= newEndIndex) {

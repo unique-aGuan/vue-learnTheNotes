@@ -227,6 +227,16 @@
 
         oldEndVnode = oldChildren[--oldEndIndex];
         newEndVnode = newChildren[--newEndIndex];
+      } else if (isSameVnode(oldStartVnode, newEndVnode)) {
+        patch(oldStartVnode, newEndVnode);
+        parent.insertBefore(oldStartVnode.el, oldEndVnode.el.nextsibling);
+        newEndVnode = newChildren[--newEndIndex];
+        oldStartVnode = oldChildren[++oldStartIndex];
+      } else if (isSameVnode(oldEndVnode, newStartVnode)) {
+        patch(oldEndVnode, newStartVnode);
+        parent.insertBefore(oldEndVnode.el, oldStartVnode.el);
+        newStartVnode = newChildren[++newStartIndex];
+        oldEndVnode = oldChildren[--oldEndIndex];
       }
     }
 
@@ -1167,7 +1177,7 @@
       name: 'ga'
     }
   });
-  var render2 = compileToFunction("<div id=\"a\">\n<li style=\"background:blue\" key=\"e\">E</li>\n<li style=\"background:red\" key=\"a\">A</li>\n<li style=\"background:yellow\" key=\"b\">B</li>\n<li style=\"background:pink\" key=\"c\">C</li>\n<li style=\"background:greenyellow\" key=\"d\">D</li>\n</div>");
+  var render2 = compileToFunction("<div id=\"a\">\n<li style=\"background:greenyellow\" key=\"d\">D</li>\n<li style=\"background:pink\" key=\"c\">C</li>\n<li style=\"background:yellow\" key=\"b\">B</li>\n<li style=\"background:red\" key=\"a\">A</li>\n</div>");
   var vnode2 = render2.call(vm2); // render方法返回的就是一个虚拟dom
   // document.body.appendChild(createEle(vnode2));
   // 传入一个新的节点和老的做对比
