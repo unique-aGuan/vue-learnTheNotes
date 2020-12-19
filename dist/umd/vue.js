@@ -651,8 +651,18 @@
 
   function lifecycleMixin(Vue) {
     Vue.prototype._update = function (vnode) {
-      var vm = this;
-      vm.$el = patch(vm.$el, vnode);
+      var vm = this; // 这里需要区分以下 到底是首次渲染还是更新
+
+      var prevVnode = vm._vnode;
+
+      if (!prevVnode) {
+        // 用新的创建的元素，替换老的vm.$el
+        vm.$el = patch(vm.$el, vnode);
+      } else {
+        vm.$el = patch(prevVnode, vnode);
+      }
+
+      vm._vnode = vnode;
     };
   }
   function mountComponent(vm, el) {
@@ -1111,7 +1121,8 @@
         } // 编译原理 将模板编译成render函数
 
 
-        var render = compileToFunction(template);
+        var render = compileToFunction(template); // console.log(render)
+
         options.render = render;
       } // 挂载当前组件
 

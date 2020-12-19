@@ -4,7 +4,15 @@ import Watcher from "./observer/watcher";
 export function lifecycleMixin (Vue) {
   Vue.prototype._update = function (vnode) {
     const vm = this;
-    vm.$el = patch(vm.$el, vnode);
+    // 这里需要区分以下 到底是首次渲染还是更新
+    let prevVnode = vm._vnode;
+    if (!prevVnode) {
+      // 用新的创建的元素，替换老的vm.$el
+      vm.$el = patch(vm.$el, vnode);
+    } else {
+      vm.$el = patch(prevVnode, vnode)
+    }
+    vm._vnode = vnode;
   }
 }
 export function mountComponent (vm, el) {
