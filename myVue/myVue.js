@@ -21,12 +21,23 @@ initGlobalApi(Vue);
 import { compileToFunction } from "./compiler/index";
 import { createEle, patch } from "./vdom/patch";
 let vm1 = new Vue({ data: { name: 'ag' } });
-let render1 = compileToFunction('<div id="a" style="color:red" class="a">{{ name }}</div>');
+let render1 = compileToFunction(`<div id="a">
+<li style="background:red">A</li>
+<li style="background:yellow">B</li>
+<li style="background:pink">C</li>
+<li style="background:greenyellow">D</li>
+</div>`);
 let vnode1 = render1.call(vm1); // render方法返回的就是一个虚拟dom
 
 document.body.appendChild(createEle(vnode1));
 let vm2 = new Vue({ data: { name: 'ga' } })
-let render2 = compileToFunction('<div id="b" style="background:pink;color:red" class="a">{{ name }}</div>');
+let render2 = compileToFunction(`<div id="a">
+<li style="background:red">A</li>
+<li style="background:yellow">B</li>
+<li style="background:pink">C</li>
+<li style="background:greenyellow">D</li>
+<li style="background:blue">E</li>
+</div>`);
 let vnode2 = render2.call(vm2); // render方法返回的就是一个虚拟dom
 
 // document.body.appendChild(createEle(vnode2));

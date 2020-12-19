@@ -145,8 +145,9 @@
       return el;
     } else {
       // 在更新的时候 拿老的虚拟节点 和 新的虚拟节点做对比，将不同的地方更新
-      console.log(oldVnode, vnode); // 1、比较两个元素的标签，标签不一样直接替换掉就好
 
+      /* 以下是比较第一层node */
+      // 1、比较两个元素的标签，标签不一样直接替换掉就好
       if (oldVnode.tag !== vnode.tag) {
         // 老的dom元素
         return oldVnode.el.parentNode.replaceChild(createEle(vnode), oldVnode.el);
@@ -168,8 +169,68 @@
 
 
       updateProperties(vnode, oldVnode.data);
+      /* 以上是比较第一层节点 */
+
+      /* 以下是比较孩子节点 */
+
+      var oldChildren = oldVnode.children || [];
+      var newChildren = vnode.children || [];
+
+      if (oldChildren.length > 0 && newChildren.length > 0) {
+        // 老的有儿子 新的也有儿子 diff 算法
+        updateChildren(oldChildren, newChildren, _el);
+      } else if (oldChildren.length > 0) {
+        // 儿子节点分为以下几种情况
+        // 老的有儿子 新的没儿子
+        _el.innerHTML = '';
+      } else if (newChildren.length > 0) {
+        // 老的没儿子 新的有儿子
+        for (var i = 0; i < newChildren.length; i++) {
+          var child = newChildren[i];
+
+          _el.appendChild(createEle(child));
+        }
+      }
+    }
+  } // 判断是不是同一个节点
+
+  function isSameVnode(oldVnode, newVnode) {
+    return oldVnode.tag === newVnode.tag && oldVnode.key === newVnode.key;
+  } // 儿子间的比较
+
+
+  function updateChildren(oldChildren, newChildren, parent) {
+    // vue的diff算法 做了很多优化
+    // DOM中操作有很多常见的逻辑 把节点插入到当前儿子的头部、尾部、儿子倒叙正叙
+    // vue2中采用双指针的方式
+    var oldStartIndex = 0;
+    var oldStartVnode = oldChildren[0];
+    var oldEndIndex = oldChildren.length - 1;
+    var oldEndVnode = oldChildren[oldEndIndex];
+    var newStartIndex = 0;
+    var newStartVnode = newChildren[0];
+    var newEndIndex = newChildren.length - 1;
+    var newEndVnode = newChildren[newEndIndex]; // 在尾部添加
+    // 我要做一个循环，同时循环老的和新的，哪个先结束，循环就停止，将多余的删除或者添加进去
+    // 谁先循环完 停止
+
+    while (oldStartIndex <= oldEndIndex && newStartIndex <= newEndIndex) {
+      if (isSameVnode(oldStartVnode, newStartVnode)) {
+        // 如果俩人是同一个元素，对比儿子
+        patch(oldStartVnode, newStartVnode); // 更新属性和style再去递归更新字节点
+
+        oldStartVnode = oldChildren[++oldStartIndex];
+        newStartVnode = newChildren[++newStartIndex];
+      }
+    }
+
+    if (newStartIndex <= newEndIndex) {
+      for (var i = newStartIndex; i <= newEndIndex; i++) {
+        parent.appendChild(createEle(newChildren[i]));
+      }
     }
   }
+
   function createEle(vnode) {
     var tag = vnode.tag,
         children = vnode.children,
@@ -1090,7 +1151,7 @@
       name: 'ag'
     }
   });
-  var render1 = compileToFunction('<div id="a" style="color:red" class="a">{{ name }}</div>');
+  var render1 = compileToFunction("<div id=\"a\">\n<li style=\"background:red\">A</li>\n<li style=\"background:yellow\">B</li>\n<li style=\"background:pink\">C</li>\n<li style=\"background:greenyellow\">D</li>\n</div>");
   var vnode1 = render1.call(vm1); // render方法返回的就是一个虚拟dom
 
   document.body.appendChild(createEle(vnode1));
@@ -1099,7 +1160,7 @@
       name: 'ga'
     }
   });
-  var render2 = compileToFunction('<div id="b" style="background:pink;color:red" class="a">{{ name }}</div>');
+  var render2 = compileToFunction("<div id=\"a\">\n<li style=\"background:red\">A</li>\n<li style=\"background:yellow\">B</li>\n<li style=\"background:pink\">C</li>\n<li style=\"background:greenyellow\">D</li>\n<li style=\"background:blue\">E</li>\n</div>");
   var vnode2 = render2.call(vm2); // render方法返回的就是一个虚拟dom
   // document.body.appendChild(createEle(vnode2));
   // 传入一个新的节点和老的做对比

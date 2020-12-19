@@ -11,7 +11,7 @@ export function patch (oldVnode, vnode) {
     return el;
   } else {
     // 在更新的时候 拿老的虚拟节点 和 新的虚拟节点做对比，将不同的地方更新
-    console.log(oldVnode, vnode)
+    /* 以下是比较第一层node */
     // 1、比较两个元素的标签，标签不一样直接替换掉就好
     if (oldVnode.tag !== vnode.tag) {
       // 老的dom元素
@@ -30,6 +30,61 @@ export function patch (oldVnode, vnode) {
 
     // 更新属性，用新的属性和老的属性做对比，去更新节点
     updateProperties(vnode, oldVnode.data);
+
+    /* 以上是比较第一层节点 */
+    /* 以下是比较孩子节点 */
+    let oldChildren = oldVnode.children || [];
+    let newChildren = vnode.children || [];
+
+    if (oldChildren.length > 0 && newChildren.length > 0) {
+      // 老的有儿子 新的也有儿子 diff 算法
+      updateChildren(oldChildren, newChildren, el);
+    } else if (oldChildren.length > 0) { // 儿子节点分为以下几种情况
+      // 老的有儿子 新的没儿子
+      el.innerHTML = '';
+    } else if (newChildren.length > 0) {
+      // 老的没儿子 新的有儿子
+      for (let i = 0; i < newChildren.length; i++) {
+        let child = newChildren[i];
+        el.appendChild(createEle(child));
+      }
+    }
+
+  }
+
+}
+// 判断是不是同一个节点
+function isSameVnode (oldVnode, newVnode) {
+  return (oldVnode.tag === newVnode.tag) && (oldVnode.key === newVnode.key)
+}
+// 儿子间的比较
+function updateChildren (oldChildren, newChildren, parent) {
+  // vue的diff算法 做了很多优化
+  // DOM中操作有很多常见的逻辑 把节点插入到当前儿子的头部、尾部、儿子倒叙正叙
+  // vue2中采用双指针的方式
+  let oldStartIndex = 0;
+  let oldStartVnode = oldChildren[0];
+  let oldEndIndex = oldChildren.length - 1;
+  let oldEndVnode = oldChildren[oldEndIndex];
+  let newStartIndex = 0;
+  let newStartVnode = newChildren[0];
+  let newEndIndex = newChildren.length - 1;
+  let newEndVnode = newChildren[newEndIndex];
+  // 在尾部添加
+  // 我要做一个循环，同时循环老的和新的，哪个先结束，循环就停止，将多余的删除或者添加进去
+  // 谁先循环完 停止
+  while (oldStartIndex <= oldEndIndex && newStartIndex <= newEndIndex) {
+    if (isSameVnode(oldStartVnode, newStartVnode)) { // 如果俩人是同一个元素，对比儿子
+      patch(oldStartVnode, newStartVnode); // 更新属性和style再去递归更新字节点
+      oldStartVnode = oldChildren[++oldStartIndex];
+      newStartVnode = newChildren[++newStartIndex];
+    }
+  }
+  if (newStartIndex <= newEndIndex) {
+    for (let i = newStartIndex; i <= newEndIndex; i++) {
+      parent.appendChild(createEle(newChildren[i]));
+    }
+
   }
 
 }
