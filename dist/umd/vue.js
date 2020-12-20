@@ -734,6 +734,10 @@
       initData(vm);
     }
 
+    if (opts.computed) {
+      initComputed(vm);
+    }
+
     if (opts.watch) {
       initWatch(vm);
     }
@@ -748,6 +752,34 @@
     }
 
     observe$1(data);
+  }
+
+  function initComputed(vm) {
+    var computed = vm.$options.computed; // 1、需要有一个watcher 2、还需要通过defineProperty 3、dirty
+    // const watchers = vm._computedWatchers = {}; // 稍后用来存放计算属性的watcher
+
+    for (var key in computed) {
+      var userDef = computed[key]; // 取出对应的值
+      // 获取get方法
+      // const getter = typeof userDef === 'function' ? userDef : userDef.get; // watcher 使用的
+      // defineReactive();
+
+      defineComputed(vm, key, userDef);
+    }
+  }
+
+  var sharedPropertyDeffinition = {};
+
+  function defineComputed(target, key, userDef) {
+    if (typeof userDef === 'function') {
+      sharedPropertyDeffinition.get = userDef;
+    } else {
+      sharedPropertyDeffinition.get = userDef.get; // 需要加缓存
+
+      sharedPropertyDeffinition.set = userDef.set;
+    }
+
+    Object.defineProperty(target, key, sharedPropertyDeffinition);
   }
 
   function initWatch(vm) {
