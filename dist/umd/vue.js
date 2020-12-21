@@ -521,11 +521,15 @@
   }();
 
   Dep.target = null;
+  var stack = [];
   function pushTarget(watcher) {
     Dep.target = watcher; // 保留watcher
+
+    stack.push(watcher); // 有渲染watcher 有计算属性watcher
   }
   function popTarget() {
-    Dep.target = null; //  将变量删除
+    stack.pop();
+    Dep.target = stack[stack.length - 1]; //  将变量删除
   }
   // dep 可以存多个watcher vm.$watch('name')
   // 一个watcher可以对应多个dep
@@ -545,6 +549,10 @@
       this.options = options;
       this.user = options.user; // 这个一个用户watcher
 
+      this.lazy = options.lazy; // 如果属性上有lazy属性，说明是一个计算属性
+
+      this.dirty = this.lazy; // 她默认等于lazy 但是lazy是不可变的 dirty是可变的 她代表的是取值时是否执行用户执行的方法
+
       this.isWatcher = typeof options === 'boolean' ? options : false;
 
       this.id = id$1++; // watcher 的唯一标识
@@ -557,7 +565,7 @@
         this.getter = exprOrFn;
       } else {
         this.getter = function () {
-          //exprOrFn 可能是字符串a
+          // exprOrFn 可能是字符串a
           // 去当前实例上去取值是才会触发依赖收集
           var path = exprOrFn.split('.'); // ['a'.'a'.'a']
 
@@ -571,7 +579,7 @@
         };
       }
 
-      this.value = this.get(); // 默认会调用get方法
+      this.value = this.lazy ? void 0 : this.get(); // 默认会调用get方法 如果时计算属性，默认不执行
     }
 
     _createClass(Watcher, [{
@@ -590,7 +598,7 @@
       value: function get() {
         pushTarget(this); //当前watcher实例
 
-        var result = this.getter(); // 调用 渲染页面 会取值：render方法with(this)(_v(msg))
+        var result = this.getter.call(this.vm); // 调用 渲染页面 会取值：render方法with(this)(_v(msg))
 
         popTarget();
         return result;
@@ -609,8 +617,29 @@
     }, {
       key: "update",
       value: function update() {
-        queueWatcher(this); // 暂存的概念
-        // this.get();
+        if (this.lazy) {
+          // 是计算属性
+          this.dirty = true; // 值更新了，页面重新渲染就可以获得最新的值了
+        } else {
+          queueWatcher(this); // 暂存的概念
+          // this.get();
+        }
+      }
+    }, {
+      key: "evaluate",
+      value: function evaluate() {
+        this.value = this.get();
+        this.dirty = false; // 去过一次值之后 就表示已经取过值了
+      }
+    }, {
+      key: "depend",
+      value: function depend() {
+        // 计算属性watcher 会存储 dep  dep会存储watcher
+        var i = this.deps.length;
+
+        while (i--) {
+          this.deps[i].depend; // 让dep取存储渲染watcher
+        }
       }
     }]);
 
@@ -756,15 +785,20 @@
 
   function initComputed(vm) {
     var computed = vm.$options.computed; // 1、需要有一个watcher 2、还需要通过defineProperty 3、dirty
-    // const watchers = vm._computedWatchers = {}; // 稍后用来存放计算属性的watcher
+
+    var watchers = vm._computedWatchers = {}; // 稍后用来存放计算属性的watcher
 
     for (var key in computed) {
       var userDef = computed[key]; // 取出对应的值
       // 获取get方法
-      // const getter = typeof userDef === 'function' ? userDef : userDef.get; // watcher 使用的
-      // defineReactive();
 
-      defineComputed(vm, key, userDef);
+      var getter = typeof userDef === 'function' ? userDef : userDef.get; // watcher 使用的
+
+      watchers[key] = new Watcher(vm, getter, function () {}, {
+        lazy: true
+      }); // 给每个属性都增加了一个watcher  和以前不一样，以前是给每个属性都增加了一个Dep
+
+      defineComputed(vm, key, userDef); // defineReactive();
     }
   }
 
@@ -772,14 +806,35 @@
 
   function defineComputed(target, key, userDef) {
     if (typeof userDef === 'function') {
-      sharedPropertyDeffinition.get = userDef;
+      sharedPropertyDeffinition.get = createComputedGetter(key); // 需要加缓存
     } else {
-      sharedPropertyDeffinition.get = userDef.get; // 需要加缓存
+      sharedPropertyDeffinition.get = createComputedGetter(key); // 需要加缓存
 
       sharedPropertyDeffinition.set = userDef.set;
     }
 
     Object.defineProperty(target, key, sharedPropertyDeffinition);
+  }
+
+  function createComputedGetter(key) {
+    return function () {
+      // 此方法是我们包装的方法 每次取值会调用此方法
+      var watcher = this._computedWatchers[key]; // 拿到这个属性第一营的watcher
+
+      if (watcher) {
+        if (watcher.dirty) {
+          // 判断到底要不要执行用户传递的方法
+          watcher.evaluate(); // 对当前watcher求值
+        }
+
+        if (Dep.target) {
+          // 还有渲染属性，也应该一并收集起来
+          watcher.depend();
+        }
+
+        return watcher.value; // 默认返回watcher上存的值
+      }
+    };
   }
 
   function initWatch(vm) {

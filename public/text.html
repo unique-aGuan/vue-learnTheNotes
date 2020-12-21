@@ -9,8 +9,7 @@
 
 <body>
   <div id="app">
-    {{name}}
-    {{fullName}}{{fullName}}
+    {{name}}{{fullName}}
   </div>
   <script src='/dist/umd/vue.js'></script>
   <script>
@@ -28,6 +27,8 @@
         }
       }
     })
+    vm.firstName = '李'
+    console.log(vm.fullName)
   </script>
 </body>
 

@@ -1,5 +1,6 @@
 import { arrayMethods } from "./data/array";
 import Dep from "./observer/dep";
+import Watcher from "./observer/watcher";
 import { defineProperty, proxy } from "./utils/util";
 export function initState (vm) {
   const opts = vm.$options;
@@ -40,13 +41,13 @@ function initData (vm) {
 function initComputed (vm) {
   let computed = vm.$options.computed;
   // 1、需要有一个watcher 2、还需要通过defineProperty 3、dirty
-  // const watchers = vm._computedWatchers = {}; // 稍后用来存放计算属性的watcher
+  const watchers = vm._computedWatchers = {}; // 稍后用来存放计算属性的watcher
   for (let key in computed) {
     const userDef = computed[key]; // 取出对应的值
     // 获取get方法
-    // const getter = typeof userDef === 'function' ? userDef : userDef.get; // watcher 使用的
-    // defineReactive();
-    defineComputed(vm, key, userDef);
+    const getter = typeof userDef === 'function' ? userDef : userDef.get; // watcher 使用的
+    watchers[key] = new Watcher(vm, getter, () => { }, { lazy: true }); // 给每个属性都增加了一个watcher  和以前不一样，以前是给每个属性都增加了一个Dep
+    defineComputed(vm, key, userDef);// defineReactive();
   }
 }
 
@@ -54,12 +55,27 @@ const sharedPropertyDeffinition = {};
 
 function defineComputed (target, key, userDef) {
   if (typeof userDef === 'function') {
-    sharedPropertyDeffinition.get = userDef;
+    sharedPropertyDeffinition.get = createComputedGetter(key); // 需要加缓存
   } else {
-    sharedPropertyDeffinition.get = userDef.get; // 需要加缓存
+    sharedPropertyDeffinition.get = createComputedGetter(key); // 需要加缓存
     sharedPropertyDeffinition.set = userDef.set;
   }
   Object.defineProperty(target, key, sharedPropertyDeffinition);
+}
+
+function createComputedGetter (key) {
+  return function () { // 此方法是我们包装的方法 每次取值会调用此方法
+    let watcher = this._computedWatchers[key]; // 拿到这个属性第一营的watcher
+    if (watcher) {
+      if (watcher.dirty) { // 判断到底要不要执行用户传递的方法
+        watcher.evaluate(); // 对当前watcher求值
+      }
+      if (Dep.target) { // 还有渲染属性，也应该一并收集起来
+        watcher.depend();
+      }
+      return watcher.value; // 默认返回watcher上存的值
+    }
+  }
 }
 
 function initWatch (vm) {
